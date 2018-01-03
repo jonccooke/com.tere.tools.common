@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<test
+	sql="select instrumentId, Name as indexName, type, Active as active, Fixing Calendar as fixingCalendar, &quot;Offset Days&quot; as offsetDays, &quot;Offset Calendar&quot; as offsetCalendar, &quot;Offset Days&quot; as offsetDays, &quot;Effective Date Calendar&quot; as effectiveDateCalendar, Tenor as tenor, &quot;Tenor Convention&quot; as tenorConvention, FixingTime as fixingTime, FixingZone as fixingZone from IborIndices" />
+

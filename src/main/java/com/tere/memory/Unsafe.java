@@ -3,11 +3,14 @@ package com.tere.memory;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
+import com.tere.TereException;
+
 public class Unsafe
 {
 	private static final sun.misc.Unsafe UNSAFE;
 	private static long BYTE_ARRAY_OFFSET;
-
+	private static long OBJECT_OFFSET;
+	private static long baseObjectOffset;
 	static
 	{
 		sun.misc.Unsafe unsafe;
@@ -18,7 +21,7 @@ public class Unsafe
 			unsafeField.setAccessible(true);
 			unsafe = (sun.misc.Unsafe) unsafeField.get(null);
 			BYTE_ARRAY_OFFSET = unsafe.arrayBaseOffset(byte[].class);
-
+			OBJECT_OFFSET = unsafe.arrayBaseOffset(Object[].class);
 		}
 		catch (Exception e)
 		{
@@ -56,12 +59,13 @@ public class Unsafe
 	}
 
 	public static void copy(byte[] src, int srcPos, byte[] dest, int destPos,
-			int length)
+			int length) throws TereException
 	{
-		assert srcPos >= 0 : srcPos;
-		assert srcPos <= src.length - length : srcPos;
-		assert destPos >= 0 : destPos;
-		assert destPos <= dest.length - length : destPos;
+		if (srcPos < 0 || destPos < 0 || srcPos >= src.length
+				|| destPos >= dest.length || destPos + length > dest.length)
+		{
+			throw new TereException("Invalid parameter");
+		}
 		UNSAFE.copyMemory(src, BYTE_ARRAY_OFFSET + srcPos, dest,
 				BYTE_ARRAY_OFFSET + destPos, length);
 	}
@@ -78,10 +82,10 @@ public class Unsafe
 	// UNSAFE.copyMemory(toAddress(src), destPointer, length);
 	// }
 	//
-	// public static long toAddress(byte[] array)
-	// {
-	// return normalize(UNSAFE.getInt(array, BYTE_ARRAY_OFFSET));
-	// }
+	public static long toAddress(byte[] array)
+	{
+		return UNSAFE.getLong(array, BYTE_ARRAY_OFFSET);
+	}
 	//
 	// private static long normalize(int value)
 	// {
@@ -97,48 +101,56 @@ public class Unsafe
 	// return array;
 	// }
 
-	// public static byte[] fromAddress(long address)
-	// {
-	// Object[] array = new Object[] { new byte[] { (byte) 0 } };
-	// getUnsafe().putLong(array, BYTE_ARRAY_OFFSET, address);
-	// return (byte[]) array[0];
-	// }
+	public static byte[] fromAddress(long address)
+	{
+		Object[] array = new Object[] { new byte[] { (byte) 0 } };
+		getUnsafe().putLong(array, BYTE_ARRAY_OFFSET, address);
+		return (byte[]) array[0];
+	}
 
+	@SuppressWarnings("restriction")
 	public static void copy(long src, byte[] dest, long length)
 	{
 		UNSAFE.copyMemory(null, src, dest, BYTE_ARRAY_OFFSET, length);
 	}
 
+	@SuppressWarnings("restriction")
 	public static void copy(byte[] src, long dest, long length)
 	{
 		UNSAFE.copyMemory(src, BYTE_ARRAY_OFFSET, null, dest, length);
 	}
 
+	@SuppressWarnings("restriction")
 	public static void copy(byte[] src, long dest, long offset, long length)
 	{
 		UNSAFE.copyMemory(src, BYTE_ARRAY_OFFSET, null, dest + offset, length);
 	}
 
+	@SuppressWarnings("restriction")
 	public static void copy(byte[] src, int offset, long dest, int length)
 	{
 		UNSAFE.copyMemory(src, BYTE_ARRAY_OFFSET + offset, null, dest, length);
 	}
 
+	@SuppressWarnings("restriction")
 	public static void copy(byte[] src, byte[] dest)
 	{
 		UNSAFE.copyMemory(src, BYTE_ARRAY_OFFSET, dest, 0, dest.length);
 	}
 
+	@SuppressWarnings("restriction")
 	public static void copy(byte[] src, byte[] dest, int length)
 	{
 		UNSAFE.copyMemory(src, BYTE_ARRAY_OFFSET, dest, 0, length);
 	}
 
+	@SuppressWarnings("restriction")
 	public static void fill(long start, long length, byte value)
 	{
 		UNSAFE.setMemory(start, length, value);
 	}
 
+	@SuppressWarnings("restriction")
 	public static void fill(byte[] dest, long length, byte value)
 	{
 		UNSAFE.setMemory(dest, BYTE_ARRAY_OFFSET, length, value);

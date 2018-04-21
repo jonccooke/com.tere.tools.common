@@ -2,6 +2,11 @@ package com.tere.utils.hash;
 
 import static java.lang.Long.rotateLeft;
 
+import java.math.BigInteger;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.util.Date;
+
 public class HashUtils
 {
 
@@ -149,5 +154,67 @@ public class HashUtils
 		}
 		return result;
 	}
+
+	public static int hashCode(byte[] value)
+	{
+		int result = 1;
+		if (value == null)
+			return result;
+
+		for (int pos = 0; pos < value.length; pos++)
+			result = 31 * result + value[pos];
+		return result;
+	}
+
+	public static int hashCode(int value)
+	{
+		return Integer.hashCode(value);
+	}
+
+	public static int hashCode(float value)
+	{
+		return Float.hashCode(value);
+	}
+
+	public static int hashCode(long value)
+	{
+		return Long.hashCode(value);
+	}
+
+	public static int hashCode(double value)
+	{
+		return Double.hashCode(value);
+	}
+
+	public static int hashCode(short value)
+	{
+		return Short.hashCode(value);
+	}
+
+	public static int hashCode(byte value)
+	{
+		return Byte.hashCode(value);
+	}
+
+	public static int hashCode(Date value)
+	{
+		return value.hashCode();
+	}
+
+	public static int hashCode(Time value)
+	{
+		return value.hashCode();
+	}
+
+	public static int hashCode(Timestamp value)
+	{
+		return value.hashCode();
+	}
+
+	public static int hashCode(BigInteger value)
+	{
+		return value.hashCode();
+	}
+
 
 }

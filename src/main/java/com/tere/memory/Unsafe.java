@@ -9,6 +9,7 @@ public class Unsafe
 {
 	private static final sun.misc.Unsafe UNSAFE;
 	private static long BYTE_ARRAY_OFFSET;
+	private static long INT_ARRAY_OFFSET;
 	private static long OBJECT_OFFSET;
 	private static long baseObjectOffset;
 	static
@@ -21,6 +22,7 @@ public class Unsafe
 			unsafeField.setAccessible(true);
 			unsafe = (sun.misc.Unsafe) unsafeField.get(null);
 			BYTE_ARRAY_OFFSET = unsafe.arrayBaseOffset(byte[].class);
+			INT_ARRAY_OFFSET = unsafe.arrayBaseOffset(int[].class);
 			OBJECT_OFFSET = unsafe.arrayBaseOffset(Object[].class);
 		}
 		catch (Exception e)

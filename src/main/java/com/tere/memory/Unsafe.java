@@ -17,15 +17,13 @@ public class Unsafe
 		sun.misc.Unsafe unsafe;
 		try
 		{
-			Field unsafeField = sun.misc.Unsafe.class
-					.getDeclaredField("theUnsafe");
+			Field unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
 			unsafeField.setAccessible(true);
 			unsafe = (sun.misc.Unsafe) unsafeField.get(null);
 			BYTE_ARRAY_OFFSET = unsafe.arrayBaseOffset(byte[].class);
 			INT_ARRAY_OFFSET = unsafe.arrayBaseOffset(int[].class);
 			OBJECT_OFFSET = unsafe.arrayBaseOffset(Object[].class);
-		}
-		catch (Exception e)
+		} catch (Exception e)
 		{
 			unsafe = null;
 		}
@@ -51,25 +49,21 @@ public class Unsafe
 			{
 				if (!Modifier.isStatic(f.getModifiers()))
 				{
-					maximumOffset = Math.max(maximumOffset,
-							UNSAFE.objectFieldOffset(f));
+					maximumOffset = Math.max(maximumOffset, UNSAFE.objectFieldOffset(f));
 				}
 			}
-		}
-		while ((clazz = clazz.getSuperclass()) != null);
+		} while ((clazz = clazz.getSuperclass()) != null);
 		return maximumOffset + 8;
 	}
 
-	public static void copy(byte[] src, int srcPos, byte[] dest, int destPos,
-			int length) throws TereException
+	public static void copy(byte[] src, int srcPos, byte[] dest, int destPos, int length) throws TereException
 	{
-		if (srcPos < 0 || destPos < 0 || srcPos >= src.length
-				|| destPos >= dest.length || destPos + length > dest.length)
+		if (srcPos < 0 || destPos < 0 || srcPos >= src.length || destPos >= dest.length
+				|| destPos + length > dest.length)
 		{
 			throw new TereException("Invalid parameter");
 		}
-		UNSAFE.copyMemory(src, BYTE_ARRAY_OFFSET + srcPos, dest,
-				BYTE_ARRAY_OFFSET + destPos, length);
+		UNSAFE.copyMemory(src, BYTE_ARRAY_OFFSET + srcPos, dest, BYTE_ARRAY_OFFSET + destPos, length);
 	}
 
 	// public static void copy(long srcPointer, byte[] dest, int length)
@@ -84,11 +78,37 @@ public class Unsafe
 	// UNSAFE.copyMemory(toAddress(src), destPointer, length);
 	// }
 	//
-	public static long toAddress(byte[] array)
+	static long toAddress(Object obj)
 	{
-		return UNSAFE.getLong(array, BYTE_ARRAY_OFFSET);
+		Object[] array = new Object[]
+			{ obj };
+		long baseOffset = getUnsafe().arrayBaseOffset(Object[].class);
+		return normalize(getUnsafe().getInt(array, baseOffset));
 	}
-	//
+
+	static Object fromAddress(long address)
+	{
+		Object[] array = new Object[]
+			{ null };
+		long baseOffset = getUnsafe().arrayBaseOffset(Object[].class);
+		getUnsafe().putLong(array, baseOffset, address);
+		return array[0];
+	}
+	
+	private static long normalize(int value) {
+	    if(value >= 0) return value;
+	    return (~0L >>> 32) & value;
+	}
+	// public static long toAddress(byte[] array)
+//	{
+//		return UNSAFE.getLong(array, BYTE_ARRAY_OFFSET);
+//	}
+//
+//	public static long toAddress(int[] array)
+//	{
+//		return UNSAFE.getLong(array, INT_ARRAY_OFFSET);
+//	}
+//
 	// private static long normalize(int value)
 	// {
 	// if (value >= 0)
@@ -103,11 +123,37 @@ public class Unsafe
 	// return array;
 	// }
 
-	public static byte[] fromAddress(long address)
+	/**
+	 * Returns the object located at the address.
+	 *
+	 * @param address The address
+	 * @return the object at this address
+	 */
+	public static Object objectfromAddress(long address)
 	{
-		Object[] array = new Object[] { new byte[] { (byte) 0 } };
+		Object[] array = new Object[]
+			{ null };
+		long baseOffset = UNSAFE.arrayBaseOffset(Object[].class);
+		UNSAFE.putLong(array, baseOffset, address);
+		return array[0];
+	}
+
+	public static byte[] byteArrayfromAddress(long address)
+	{
+		Object[] array = new Object[]
+			{ new byte[]
+						{ (byte) 0 } };
 		getUnsafe().putLong(array, BYTE_ARRAY_OFFSET, address);
 		return (byte[]) array[0];
+	}
+
+	public static int[] intArrayfromAddress(long address)
+	{
+		Object[] array = new Object[]
+			{ null };
+		long baseOffset = UNSAFE.arrayBaseOffset(int[].class);
+		UNSAFE.putLong(array, baseOffset, address);
+		return (int[]) array[0];
 	}
 
 	@SuppressWarnings("restriction")

@@ -1,5 +1,6 @@
 package com.tere.utils.id;
 
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class IdUtils
@@ -11,4 +12,10 @@ public class IdUtils
 	{
 		return currentId.incrementAndGet();
 	}
+	
+	public static String nextStringId()
+	{
+		return UUID.randomUUID().toString();
+	}
+
 }

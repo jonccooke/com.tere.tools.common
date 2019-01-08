@@ -22,7 +22,6 @@ import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-import org.xml.sax.helpers.DefaultHandler;
 
 import com.tere.TereException;
 
@@ -57,11 +56,16 @@ public class XmlReader implements AutoCloseable
 
 	}
 
-	public XmlReader(InputStream inputStream) throws TereException
+	XmlReader(InputStream inputStream) throws TereException
 	{
 		read(inputStream);
 	}
 
+	public static XmlReader reader(InputStream inputStream) throws TereException
+	{
+		return new XmlReader(inputStream);
+	}
+	
 	protected void read(InputStream inputStream) throws TereException
 	{
 		xPath = XPathFactory.newInstance().newXPath();
@@ -478,7 +482,6 @@ public class XmlReader implements AutoCloseable
 	@Override
 	public void close() throws TereException
 	{
-
 	}
 
 }

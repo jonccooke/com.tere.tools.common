@@ -2,6 +2,9 @@ package com.tere.utils.properties;
 
 import java.util.Properties;
 
+import com.tere.TereException;
+import com.tere.builder.Builder;
+
 public class PropertiesUtils
 {
 
@@ -29,4 +32,25 @@ public class PropertiesUtils
 		return properties;
 	}
 
+	public static PropertiesBuilder toBuilder()
+	{
+		return new PropertiesBuilder();
+	}
+	
+	public static class PropertiesBuilder implements Builder<Properties, TereException>
+	{
+		private Properties properties = new Properties();
+		
+		public PropertiesBuilder put(String key, String value)
+		{
+			properties.put(key, value);
+			return this;
+		}
+		@Override
+		public Properties build() throws TereException
+		{
+			return properties;
+		}
+		
+	}
 }

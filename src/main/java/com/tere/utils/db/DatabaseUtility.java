@@ -85,9 +85,9 @@ public class DatabaseUtility
 			int paramPos =0;
 			for (Object param : params)
 			{
-				statement.setObject(paramPos++, param);
+				statement.setObject(++paramPos, param);
 			}
-			statement.execute(sqlString);
+			statement.execute();
 			
 			connection.commit();
 		}
@@ -116,9 +116,9 @@ public class DatabaseUtility
 			int paramPos =0;
 			for (Object param : params)
 			{
-				statement.setObject(paramPos++, param);
+				statement.setObject(++paramPos, param);
 			}
-			statement.execute(sqlString);
+			statement.execute();
 			
 			connection.commit();
 
@@ -141,14 +141,14 @@ public class DatabaseUtility
 	public static void executeSQL(String sqlString) throws SQLException
 	{
 		Connection connection = null;
-		Statement statement = null;
+		PreparedStatement statement = null;
 
 		try
 		{
 			connection = getDataSource().getConnection();
-			statement = connection.createStatement();
+			statement = connection.prepareStatement(sqlString);
 
-			statement.execute(sqlString);
+			statement.execute();
 			
 			connection.commit();
 		}
@@ -174,14 +174,14 @@ public class DatabaseUtility
 	public static void executeSQL(String sqlString, ResultSetFunction resultSetFunction) throws SQLException
 	{
 		Connection connection = null;
-		Statement statement = null;
+		PreparedStatement statement = null;
 
 		try
 		{
 			connection = getDataSource().getConnection();
-			statement = connection.createStatement();
+			statement = connection.prepareStatement(sqlString);
 
-			statement.execute(sqlString);
+			statement.execute();
 				
 			connection.commit();
 			

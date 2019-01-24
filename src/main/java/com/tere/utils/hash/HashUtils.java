@@ -220,15 +220,27 @@ public class HashUtils
 		return value.hashCode();
 	}
 
-    public static int hashCode(int a[]) {
-        if (a == null)
-            return 0;
+	public static int hashCode(int a[])
+	{
+		if (a == null)
+			return 0;
 
-        int result = 1;
-        for (int element : a)
-            result = 31 * result + element;
+		int result = 1;
+		for (int element : a)
+			result = 31 * result + element;
 
-        return result;
-    }
+		return result;
+	}
 
+	public static int hashCode(Object... object)
+	{
+		if (object == null)
+			return 0;
+
+		int result = 1;
+		for (Object element : object)
+			result = 31 * result + element.hashCode();
+
+		return result;
+	}
 }

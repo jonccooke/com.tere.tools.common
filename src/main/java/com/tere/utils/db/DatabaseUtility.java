@@ -6,18 +6,24 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.stream.Stream;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 
 import com.tere.logging.LogManager;
 import com.tere.logging.Logger;
 import com.tere.utils.directory.FileUtils;
+import com.tere.utils.list.ListUtils;
 
 public class DatabaseUtility
 {
 	private static Logger log = LogManager.getLogger(DatabaseUtility.class);
-	
+
 	public static final String DATABSE_DRIVER_STR = "databaseDriver";
 	public static final String DATABSE_URL_STR = "databaseURL";
 	public static final String DATABSE_USERNAME_STR = "databaseUsername";
@@ -28,15 +34,36 @@ public class DatabaseUtility
 
 	private static BasicDataSource dataSource;
 	private static Properties properties = null;
+	private boolean intialised =false;;
+	public interface ResultSetFunction
+	{
+		public void result(ResultSet resultSet) throws SQLException;
 
-	public static void intialise(Properties properties)
+	}
+
+	public interface ResultSetListFunction<T>
+	{
+		public T result(ResultSet resultSet) throws SQLException;
+
+	}
+
+	public static boolean isIntialised()
+	{
+		return !getDataSource().isClosed();
+	}
+
+	public static void intialise(Properties properties) throws SQLException
 	{
 		DatabaseUtility.properties = properties;
+		try (Connection connection = getDataSource().getConnection())
+		{
+			
+		}
 	}
 
 	public static BasicDataSource getDataSource()
 	{
-		
+
 		String prop;
 
 		if (null == properties)
@@ -44,7 +71,7 @@ public class DatabaseUtility
 			return null;
 		}
 		if (dataSource == null)
-		{ 
+		{
 
 			BasicDataSource ds = new BasicDataSource();
 
@@ -58,14 +85,12 @@ public class DatabaseUtility
 
 			ds.setPassword(properties.getProperty(DATABSE_PASSWORD_STR));
 
-			ds.setMinIdle(Integer.parseInt(properties.getProperty(
-					DATABSE_POOL_MIN_IDLE_STR, "5")));
+			ds.setMinIdle(Integer.parseInt(properties.getProperty(DATABSE_POOL_MIN_IDLE_STR, "5")));
 
-			ds.setMaxIdle(Integer.parseInt(properties.getProperty(
-					DATABSE_POOL_MAX_IDLE_STR, "10")));
+			ds.setMaxIdle(Integer.parseInt(properties.getProperty(DATABSE_POOL_MAX_IDLE_STR, "10")));
 
-			ds.setMaxOpenPreparedStatements(Integer.parseInt(properties
-					.getProperty(DATABSE_POOL_MAX_STATEMENTS_STR, "100")));
+			ds.setMaxOpenPreparedStatements(
+					Integer.parseInt(properties.getProperty(DATABSE_POOL_MAX_STATEMENTS_STR, "100")));
 
 			dataSource = ds;
 
@@ -73,137 +98,337 @@ public class DatabaseUtility
 		return dataSource;
 	}
 
-	public static void executeSQL(String sqlString, Object ...params) throws SQLException
-	{
-		Connection connection = null;
-		PreparedStatement statement = null;
-
-		try
-		{
-			connection = getDataSource().getConnection();
-			statement = connection.prepareStatement(sqlString);
-			int paramPos =0;
-			for (Object param : params)
-			{
-				statement.setObject(++paramPos, param);
-			}
-			statement.execute();
-			
-			connection.commit();
-		}
-		finally
-		{
-			if (null != statement)
-			{
-				statement.close();
-			}
-			if (null != connection)
-			{
-				connection.close();
-			}
-		}
-	}
-
-	public static void executeSQL(String sqlString, ResultSetFunction resultSetFunction, Object ...params) throws SQLException
-	{
-		Connection connection = null;
-		PreparedStatement statement = null;
-
-		try
-		{
-			connection = getDataSource().getConnection();
-			statement = connection.prepareStatement(sqlString);
-			int paramPos =0;
-			for (Object param : params)
-			{
-				statement.setObject(++paramPos, param);
-			}
-			statement.execute();
-			
-			connection.commit();
-
-			resultSetFunction.result(statement.getResultSet());
-
-		}
-		finally
-		{
-			if (null != statement)
-			{
-				statement.close();
-			}
-			if (null != connection)
-			{
-				connection.close();
-			}
-		}
-	}
-
 	public static void executeSQL(String sqlString) throws SQLException
 	{
-		Connection connection = null;
-		PreparedStatement statement = null;
-
-		try
+		try (Connection connection = getDataSource().getConnection())
 		{
-			connection = getDataSource().getConnection();
-			statement = connection.prepareStatement(sqlString);
+			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			{
 
-			statement.execute();
-			
-			connection.commit();
-		}
-		finally
-		{
-			if (null != statement)
-			{
-				statement.close();
-			}
-			if (null != connection)
-			{
-				connection.close();
+				statement.execute();
+
+				connection.commit();
 			}
 		}
 	}
 
 
-	public interface ResultSetFunction 
+	public static void executeSQL(String sqlString, Object... params) throws SQLException
 	{
-		public void result(ResultSet resultSet);
+		try (Connection connection = getDataSource().getConnection())
+		{
+			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			{
+				int paramPos = 0;
+				for (Object param : params)
+				{
+					statement.setObject(++paramPos, param);
+				}
+				statement.execute();
+
+				connection.commit();
+			}
+		}
+	}
+
+	public static void iterate(String sqlString, ResultSetFunction resultSetFunction) throws SQLException
+	{
+		try (Connection connection = getDataSource().getConnection())
+		{
+			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			{
+				statement.execute();
+
+				connection.commit();
+
+				try (ResultSet resultSet = statement.getResultSet())
+				{
+					while (resultSet.next())
+					{
+						resultSetFunction.result(resultSet);
+					}
+				}
+			}
+			connection.close();
+		}
+	}
+
+	public static void iterate(String sqlString, ResultSetFunction resultSetFunction, Object... params)
+			throws SQLException
+	{
+		try (Connection connection = getDataSource().getConnection())
+		{
+			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			{
+				int paramPos = 0;
+				for (Object param : params)
+				{
+					statement.setObject(++paramPos, param);
+				}
+				statement.execute();
+
+				connection.commit();
+
+				try (ResultSet resultSet = statement.getResultSet())
+				{
+					while (resultSet.next())
+					{
+						resultSetFunction.result(resultSet);
+					}
+				}
+
+			}
+		}
+	}
+
+
+	public static <T> T one(String sqlString, ResultSetListFunction<T> resultSetFunction) throws SQLException
+	{
+		T result = null;
+ 
+		try (Connection connection = getDataSource().getConnection())
+		{
+			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			{
+				statement.execute();
+
+				connection.commit();
+
+				try (ResultSet resultSet = statement.getResultSet())
+				{
+					if (resultSet.next())
+					{
+						result = resultSetFunction.result(resultSet);
+					}
+				}
+			}
+			connection.close();
+		}
+		return result;
+	}
+
+	public static <T> T one(String sqlString, ResultSetListFunction<T> resultSetFunction, Object... params)
+			throws SQLException
+	{
+		T result = null;
 		
-	}
-	public static void executeSQL(String sqlString, ResultSetFunction resultSetFunction) throws SQLException
-	{
-		Connection connection = null;
-		PreparedStatement statement = null;
-
-		try
+		try (Connection connection = getDataSource().getConnection())
 		{
-			connection = getDataSource().getConnection();
-			statement = connection.prepareStatement(sqlString);
+			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			{
+				int paramPos = 0;
+				for (Object param : params)
+				{
+					statement.setObject(++paramPos, param);
+				}
+				statement.execute();
 
-			statement.execute();
-				
-			connection.commit();
-			
-			resultSetFunction.result(statement.getResultSet());
+				connection.commit();
+
+				try (ResultSet resultSet = statement.getResultSet())
+				{
+					if (resultSet.next())
+					{
+						result = resultSetFunction.result(resultSet);
+					}
+				}
+
+			}
 		}
-		finally
+		return result;
+	}
+
+
+	public static boolean exists(String sqlString, Object... params) throws SQLException
+	{
+
+		try (Connection connection = getDataSource().getConnection())
 		{
-			if (null != statement)
+			try (PreparedStatement statement = connection.prepareStatement(sqlString))
 			{
-				statement.close();
+				log.debug("Param count %d", statement.getParameterMetaData().getParameterCount());
+				for (int paramPos = 0;paramPos<params.length;paramPos++)
+				{
+					Object param = params[paramPos];
+					
+					statement.setObject(paramPos+1, param);
+				}
+				try (ResultSet resultSet = statement.executeQuery())
+				{
+					return statement.getMoreResults();
+				}
 			}
-			if (null != connection)
+		}
+		catch (Exception e)
+		{
+			log.error(e);
+		}
+		return false;
+	}
+
+	public static boolean exists(String sqlString) throws SQLException
+	{
+
+		try (Connection connection = getDataSource().getConnection())
+		{
+			try (PreparedStatement statement = connection.prepareStatement(sqlString))
 			{
-				connection.close();
+				statement.execute();
+				try (ResultSet resultSet = statement.executeQuery())
+				{
+					return statement.getMoreResults();
+				}
 			}
+		}
+	}
+
+
+	public static <T> List<T> list(List<T> list, String sqlString, ResultSetListFunction<T> resultSetListFunction)
+			throws SQLException
+	{
+		try (Connection connection = getDataSource().getConnection())
+		{
+			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			{
+				statement.execute();
+
+				connection.commit();
+
+				try (ResultSet resultSet = statement.getResultSet())
+				{
+					while (resultSet.next())
+					{
+						list.add(resultSetListFunction.result(resultSet));
+					}
+				}
+				return list;
+			}
+		}
+	}
+
+	public static <T> List<T> list(List<T> list, String sqlString, ResultSetListFunction<T> resultSetListFunction, Object... params)
+			throws SQLException
+	{
+		try (Connection connection = getDataSource().getConnection())
+		{
+			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			{
+				int paramPos = 0;
+				
+				for (Object param : params)
+				{
+					statement.setObject(++paramPos, param);
+				}
+				statement.execute();
+
+				connection.commit();
+
+				try (ResultSet resultSet = statement.getResultSet())
+				{
+					while (resultSet.next())
+					{
+						list.add(resultSetListFunction.result(resultSet));
+					}
+				}
+				return list;
+			}
+		}
+	}
+
+	public static <T> Set<T> set(Set<T> set, String sqlString, ResultSetListFunction<T> resultSetListFunction, Object... params)
+			throws SQLException
+	{
+		try (Connection connection = getDataSource().getConnection())
+		{
+			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			{
+				int paramPos = 0;
+				
+				for (Object param : params)
+				{
+					statement.setObject(++paramPos, param);
+				}
+				statement.execute();
+
+				connection.commit();
+
+				try (ResultSet resultSet = statement.getResultSet())
+				{
+					while (resultSet.next())
+					{
+						set.add(resultSetListFunction.result(resultSet));
+					}
+				}
+				return set;
+			}
+		}
+	}
+
+	public static <T> Set<T> set(Set<T> set, String sqlString, ResultSetListFunction<T> resultSetListFunction)
+			throws SQLException
+	{
+		try (Connection connection = getDataSource().getConnection())
+		{
+			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			{
+				statement.execute();
+
+				connection.commit();
+
+				try (ResultSet resultSet = statement.getResultSet())
+				{
+					while (resultSet.next())
+					{
+						set.add(resultSetListFunction.result(resultSet));
+					}
+				}
+				return set;
+			}
+		}
+	}
+
+	protected static String createUpdateString(String path,String[] columns, Object ... params)
+	{
+		StringBuilder builder = new StringBuilder("update");
+		
+		
+		builder.append(" ");
+		builder.append(path);
+		builder.append(" (");
+		ListUtils.iterate(Arrays.asList(columns), (pos, val) -> { builder.append(pos ==0 ? val : ", " + val);});
+		builder.append(" (");
+		return builder.toString();
+	}
+//
+//	protected static String createSelectColsString(String path,String[] columns, Object ... params)
+//	{
+//		StringBuilder builder = new StringBuilder("select");
+//		
+//		
+//		builder.append(" ");
+//		builder.append(path);
+//		builder.append(" ");
+//		ListUtils.iterate(Arrays.asList(columns), (pos, val) -> { builder.append(pos ==0 ? val : ", " + val);});
+//		builder.append(" ");
+//		return builder.toString();
+//	}
+
+	public static void insert(String path, String[] columns, Object ... params) throws SQLException
+	{
+		try (Connection connection = getDataSource().getConnection())
+		{
+			try (PreparedStatement statement = connection.prepareStatement(createUpdateString(path, columns, params)))
+			{
+				statement.executeUpdate();
+
+				connection.commit();
+			}
+			connection.close();
 		}
 	}
 
 	public static void executeSQLFromFile(String filePath) throws SQLException, IOException
 	{
-		Connection connection = null;
-		Statement statement = null;
 		StringBuffer sqlStringBuffer = FileUtils.readTextFile(filePath);
 		String sqlString = null;
 		if (null == sqlStringBuffer || 0 == sqlStringBuffer.length())
@@ -211,30 +436,20 @@ public class DatabaseUtility
 			return;
 		}
 		sqlString = sqlStringBuffer.toString();
-		try
+		try (Connection connection = getDataSource().getConnection())
 		{
-			connection = getDataSource().getConnection();
-			statement = connection.createStatement();
 			String[] lines = sqlString.split(";");
 			for (String sqlLine : lines)
 			{
 				log.debug("executing  %s", sqlLine);
 				if (0 != sqlLine.trim().length())
 				{
-					boolean ret = statement.execute(sqlLine);
-					connection.commit();
+					try (PreparedStatement statement = connection.prepareStatement(sqlLine))
+					{
+						boolean ret = statement.execute();
+						connection.commit();
+					}
 				}
-			}
-		}
-		finally
-		{
-			if (null != statement)
-			{
-				statement.close();
-			}
-			if (null != connection)
-			{
-				connection.close();
 			}
 		}
 	}

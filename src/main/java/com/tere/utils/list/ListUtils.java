@@ -50,4 +50,37 @@ public class ListUtils
 		return properties;
 	}
 
+	public interface IteratorFunc<T>
+	{
+		public void iterate(int pos, T value);
+	}
+
+	public static <T> void iterate(List<T> list, IteratorFunc<T> iteratorFunc)
+	{
+		int pos = 0;
+		for (T listValue : list)
+		{
+			iteratorFunc.iterate(pos, listValue);
+		}
+	}
+
+	public interface StringBuilderIteratorFunc<T>
+	{
+		public void iterate(StringBuilder builder,int pos, T value);
+	}
+
+	public static <T> StringBuilder iterateString(List<T> list, StringBuilderIteratorFunc<T> iteratorFunc)
+	{
+		StringBuilder stringBuilder = new StringBuilder();
+		int pos = 0;
+		for (T listValue : list)
+		{
+			iteratorFunc.iterate(stringBuilder, pos, listValue);
+		}
+		
+		return stringBuilder;
+	}
+
+
+	
 }

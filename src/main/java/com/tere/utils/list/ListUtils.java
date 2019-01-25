@@ -60,7 +60,7 @@ public class ListUtils
 		int pos = 0;
 		for (T listValue : list)
 		{
-			iteratorFunc.iterate(pos, listValue);
+			iteratorFunc.iterate(pos++, listValue);
 		}
 	}
 

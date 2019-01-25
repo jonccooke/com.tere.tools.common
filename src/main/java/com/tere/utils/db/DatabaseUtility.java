@@ -255,7 +255,7 @@ public class DatabaseUtility
 				}
 				try (ResultSet resultSet = statement.executeQuery())
 				{
-					return statement.getMoreResults();
+					return resultSet.next();
 				}
 			}
 		}
@@ -387,17 +387,40 @@ public class DatabaseUtility
 		}
 	}
 
-	protected static String createUpdateString(String path,String[] columns, Object ... params)
+	protected static PreparedStatement createInsertStatement(String path, Connection connection, String[] columns, Object ... params) throws SQLException
 	{
-		StringBuilder builder = new StringBuilder("update");
-		
+	
+		StringBuilder builder = new StringBuilder("insert into");
 		
 		builder.append(" ");
 		builder.append(path);
 		builder.append(" (");
-		ListUtils.iterate(Arrays.asList(columns), (pos, val) -> { builder.append(pos ==0 ? val : ", " + val);});
-		builder.append(" (");
-		return builder.toString();
+		ListUtils.iterate(Arrays.asList(columns), (pos, val) -> 
+			{ 
+				builder.append(pos ==0 ? val : ", " + val);
+			});
+		builder.append(") VALUES (");
+		ListUtils.iterate(Arrays.asList(params), (pos, val) -> 
+		{ 
+			builder.append(pos ==0 ? '?' : ", " + '?');
+		});
+		builder.append(")");
+
+		final PreparedStatement statement = connection.prepareStatement(builder.toString());
+
+		ListUtils.iterate(Arrays.asList(params), (pos, val) -> 
+		{ 
+			try
+			{
+				statement.setObject(pos+1, val);
+			} catch (SQLException e)
+			{
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		});
+
+		return statement;
 	}
 //
 //	protected static String createSelectColsString(String path,String[] columns, Object ... params)
@@ -417,13 +440,12 @@ public class DatabaseUtility
 	{
 		try (Connection connection = getDataSource().getConnection())
 		{
-			try (PreparedStatement statement = connection.prepareStatement(createUpdateString(path, columns, params)))
+			try (PreparedStatement statement = createInsertStatement(path, connection, columns, params))
 			{
-				statement.executeUpdate();
+				statement.execute();
 
 				connection.commit();
 			}
-			connection.close();
 		}
 	}
 

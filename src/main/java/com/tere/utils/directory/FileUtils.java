@@ -3,14 +3,13 @@ package com.tere.utils.directory;
 import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.StringTokenizer;
 
 import com.tere.TereException;
@@ -158,6 +157,16 @@ public final class FileUtils
 
 		return buf;
 	}
+
+	public static byte[] readBinaryFile(String path) throws IOException
+	{
+//		String newPath = path.trim();
+//		
+		log.debug("Getting path " + path);
+		
+		return Files.readAllBytes(Paths.get(toAbsoluteFilePath(path)));
+	}
+
 
 	public static final void createTextFile(String path, String fileContentsStr)
 			throws TereException

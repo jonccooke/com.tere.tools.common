@@ -9,6 +9,21 @@ public class StringUtils
 	public final static int EOL = -2;
 	public final static int SOL = -1;
 
+	public static <T> String expand(T[] array, String expandString)
+	{
+		StringBuilder stringBuilder = new StringBuilder();
+		int pos = 0;
+		for (T value : array)
+		{
+			if (0 != pos++)
+			{
+				stringBuilder.append(", ");
+			}
+			stringBuilder.append(expandString);
+		}
+		return stringBuilder.toString();
+	}
+
 	public static <T> String expand(T[] array)
 	{
 		StringBuilder stringBuilder = new StringBuilder();

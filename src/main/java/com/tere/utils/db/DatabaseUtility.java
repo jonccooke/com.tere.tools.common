@@ -35,6 +35,7 @@ public class DatabaseUtility
 	private static BasicDataSource dataSource;
 	private static Properties properties = null;
 	private boolean intialised =false;;
+	private static boolean autoCommit =false;;
 	public interface ResultSetFunction
 	{
 		public void result(ResultSet resultSet) throws SQLException;
@@ -57,7 +58,7 @@ public class DatabaseUtility
 		DatabaseUtility.properties = properties;
 		try (Connection connection = getDataSource().getConnection())
 		{
-			
+			autoCommit = connection.getAutoCommit();
 		}
 	}
 
@@ -107,7 +108,10 @@ public class DatabaseUtility
 
 				statement.execute();
 
-				connection.commit();
+				if (!autoCommit)
+				{
+					connection.commit();
+				}
 			}
 		}
 	}
@@ -126,7 +130,10 @@ public class DatabaseUtility
 				}
 				statement.execute();
 
-				connection.commit();
+				if (!autoCommit)
+				{
+					connection.commit();
+				}
 			}
 		}
 	}
@@ -139,7 +146,10 @@ public class DatabaseUtility
 			{
 				statement.execute();
 
-				connection.commit();
+				if (!autoCommit)
+				{
+					connection.commit();
+				}
 
 				try (ResultSet resultSet = statement.getResultSet())
 				{
@@ -167,7 +177,10 @@ public class DatabaseUtility
 				}
 				statement.execute();
 
-				connection.commit();
+				if (!autoCommit)
+				{
+					connection.commit();
+				}
 
 				try (ResultSet resultSet = statement.getResultSet())
 				{
@@ -192,7 +205,10 @@ public class DatabaseUtility
 			{
 				statement.execute();
 
-				connection.commit();
+				if (!autoCommit)
+				{
+					connection.commit();
+				}
 
 				try (ResultSet resultSet = statement.getResultSet())
 				{
@@ -223,7 +239,10 @@ public class DatabaseUtility
 				}
 				statement.execute();
 
-				connection.commit();
+				if (!autoCommit)
+				{
+					connection.commit();
+				}
 
 				try (ResultSet resultSet = statement.getResultSet())
 				{
@@ -292,7 +311,10 @@ public class DatabaseUtility
 			{
 				statement.execute();
 
-				connection.commit();
+				if (!autoCommit)
+				{
+					connection.commit();
+				}
 
 				try (ResultSet resultSet = statement.getResultSet())
 				{
@@ -321,7 +343,10 @@ public class DatabaseUtility
 				}
 				statement.execute();
 
-				connection.commit();
+				if (!autoCommit)
+				{
+					connection.commit();
+				}
 
 				try (ResultSet resultSet = statement.getResultSet())
 				{
@@ -350,7 +375,10 @@ public class DatabaseUtility
 				}
 				statement.execute();
 
-				connection.commit();
+				if (!autoCommit)
+				{
+					connection.commit();
+				}
 
 				try (ResultSet resultSet = statement.getResultSet())
 				{
@@ -373,7 +401,10 @@ public class DatabaseUtility
 			{
 				statement.execute();
 
-				connection.commit();
+				if (!autoCommit)
+				{
+					connection.commit();
+				}
 
 				try (ResultSet resultSet = statement.getResultSet())
 				{
@@ -444,7 +475,10 @@ public class DatabaseUtility
 			{
 				statement.execute();
 
-				connection.commit();
+				if (!autoCommit)
+				{
+					connection.commit();
+				}
 			}
 		}
 	}
@@ -469,7 +503,10 @@ public class DatabaseUtility
 					try (PreparedStatement statement = connection.prepareStatement(sqlLine))
 					{
 						boolean ret = statement.execute();
-						connection.commit();
+						if (!autoCommit)
+						{
+							connection.commit();
+						}
 					}
 				}
 			}

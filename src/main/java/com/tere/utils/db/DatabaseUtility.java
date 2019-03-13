@@ -5,13 +5,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 
@@ -31,11 +28,17 @@ public class DatabaseUtility
 	public static final String DATABSE_POOL_MIN_IDLE_STR = "databaseMinIdle";
 	public static final String DATABSE_POOL_MAX_IDLE_STR = "databaseMaxIdle";
 	public static final String DATABSE_POOL_MAX_STATEMENTS_STR = "databaseMaxStatements";
+	public static final String DATABSE_CATALOG = "databaseCatalog";
+	public static final String DATABSE_ATUO_COMMIT = "autoCommit";
+	public static final String DATABSE_SCHEMA = "databaseSchema";
 
 	private static BasicDataSource dataSource;
 	private static Properties properties = null;
 	private boolean intialised =false;;
 	private static boolean autoCommit =false;;
+	private static String catalog;
+	private static String schema;
+	
 	public interface ResultSetFunction
 	{
 		public void result(ResultSet resultSet) throws SQLException;
@@ -53,16 +56,24 @@ public class DatabaseUtility
 		return !getDataSource().isClosed();
 	}
 
-	public static void intialise(Properties properties) throws SQLException
+	public static void intialise(Properties properties) throws SQLException, SchemaNotSpecifiedException
 	{
 		DatabaseUtility.properties = properties;
+		catalog = properties.getProperty(DATABSE_CATALOG, "PUBLIC");
+		schema = properties.getProperty(DATABSE_SCHEMA);
+		if (null == schema)
+		{
+			throw new SchemaNotSpecifiedException();
+		}
+		
 		try (Connection connection = getDataSource().getConnection())
 		{
-			autoCommit = connection.getAutoCommit();
+			autoCommit = Boolean.parseBoolean(properties.getProperty(DATABSE_ATUO_COMMIT, Boolean.toString(connection.getAutoCommit())));
+	
 		}
 	}
 
-	public static BasicDataSource getDataSource()
+	protected static BasicDataSource getDataSource()
 	{
 
 		String prop;
@@ -99,9 +110,27 @@ public class DatabaseUtility
 		return dataSource;
 	}
 
+	public static String getQName(String objectName) 
+	{
+		return (catalog == null ? "" : catalog + ".") + schema + "." + objectName;
+	}
+	
+	public static Connection getConnection() throws SQLException
+	{
+		Connection connection = getDataSource().getConnection();
+		
+		if (null != catalog)
+		{
+//			connection.setCatalog(catalog);
+//			connection.setSchema(schema);
+			connection.setAutoCommit(autoCommit);
+		}
+		
+		return connection;
+	}
 	public static void executeSQL(String sqlString) throws SQLException
 	{
-		try (Connection connection = getDataSource().getConnection())
+		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = connection.prepareStatement(sqlString))
 			{
@@ -116,10 +145,9 @@ public class DatabaseUtility
 		}
 	}
 
-
 	public static void executeSQL(String sqlString, Object... params) throws SQLException
 	{
-		try (Connection connection = getDataSource().getConnection())
+		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = connection.prepareStatement(sqlString))
 			{
@@ -140,7 +168,7 @@ public class DatabaseUtility
 
 	public static void iterate(String sqlString, ResultSetFunction resultSetFunction) throws SQLException
 	{
-		try (Connection connection = getDataSource().getConnection())
+		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = connection.prepareStatement(sqlString))
 			{
@@ -166,7 +194,7 @@ public class DatabaseUtility
 	public static void iterate(String sqlString, ResultSetFunction resultSetFunction, Object... params)
 			throws SQLException
 	{
-		try (Connection connection = getDataSource().getConnection())
+		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = connection.prepareStatement(sqlString))
 			{
@@ -199,7 +227,7 @@ public class DatabaseUtility
 	{
 		T result = null;
  
-		try (Connection connection = getDataSource().getConnection())
+		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = connection.prepareStatement(sqlString))
 			{
@@ -228,7 +256,7 @@ public class DatabaseUtility
 	{
 		T result = null;
 		
-		try (Connection connection = getDataSource().getConnection())
+		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = connection.prepareStatement(sqlString))
 			{
@@ -261,7 +289,7 @@ public class DatabaseUtility
 	public static boolean exists(String sqlString, Object... params) throws SQLException
 	{
 
-		try (Connection connection = getDataSource().getConnection())
+		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = connection.prepareStatement(sqlString))
 			{
@@ -288,7 +316,7 @@ public class DatabaseUtility
 	public static boolean exists(String sqlString) throws SQLException
 	{
 
-		try (Connection connection = getDataSource().getConnection())
+		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = connection.prepareStatement(sqlString))
 			{
@@ -305,7 +333,7 @@ public class DatabaseUtility
 	public static <T> List<T> list(List<T> list, String sqlString, ResultSetListFunction<T> resultSetListFunction)
 			throws SQLException
 	{
-		try (Connection connection = getDataSource().getConnection())
+		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = connection.prepareStatement(sqlString))
 			{
@@ -331,7 +359,7 @@ public class DatabaseUtility
 	public static <T> List<T> list(List<T> list, String sqlString, ResultSetListFunction<T> resultSetListFunction, Object... params)
 			throws SQLException
 	{
-		try (Connection connection = getDataSource().getConnection())
+		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = connection.prepareStatement(sqlString))
 			{
@@ -363,7 +391,7 @@ public class DatabaseUtility
 	public static <T> Set<T> set(Set<T> set, String sqlString, ResultSetListFunction<T> resultSetListFunction, Object... params)
 			throws SQLException
 	{
-		try (Connection connection = getDataSource().getConnection())
+		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = connection.prepareStatement(sqlString))
 			{
@@ -395,7 +423,7 @@ public class DatabaseUtility
 	public static <T> Set<T> set(Set<T> set, String sqlString, ResultSetListFunction<T> resultSetListFunction)
 			throws SQLException
 	{
-		try (Connection connection = getDataSource().getConnection())
+		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = connection.prepareStatement(sqlString))
 			{
@@ -421,10 +449,9 @@ public class DatabaseUtility
 	protected static PreparedStatement createInsertStatement(String path, Connection connection, String[] columns, Object ... params) throws SQLException
 	{
 	
-		StringBuilder builder = new StringBuilder("insert into");
+		StringBuilder builder = new StringBuilder("insert into ");
 		
-		builder.append(" ");
-		builder.append(path);
+		builder.append(getQName(path));
 		builder.append(" (");
 		ListUtils.iterate(Arrays.asList(columns), (pos, val) -> 
 			{ 
@@ -469,7 +496,7 @@ public class DatabaseUtility
 
 	public static void insert(String path, String[] columns, Object ... params) throws SQLException
 	{
-		try (Connection connection = getDataSource().getConnection())
+		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = createInsertStatement(path, connection, columns, params))
 			{
@@ -492,7 +519,7 @@ public class DatabaseUtility
 			return;
 		}
 		sqlString = sqlStringBuffer.toString();
-		try (Connection connection = getDataSource().getConnection())
+		try (Connection connection = getConnection())
 		{
 			String[] lines = sqlString.split(";");
 			for (String sqlLine : lines)
@@ -519,5 +546,15 @@ public class DatabaseUtility
 		{
 			dataSource.close();
 		}
+	}
+
+	public static String getCatalog()
+	{
+		return catalog;
+	}
+
+	public static String getSchema()
+	{
+		return schema;
 	}
 }

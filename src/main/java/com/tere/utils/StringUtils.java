@@ -1,6 +1,7 @@
 package com.tere.utils;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class StringUtils
@@ -24,6 +25,54 @@ public class StringUtils
 		return stringBuilder.toString();
 	}
 
+	public interface ExpandMapFunc<K, V>
+	{
+		public String expand(boolean first, boolean last, K key, V value);
+	}
+
+	public static <K, V> String expand(Map<K, V> map, ExpandMapFunc<K, V> func)
+	{
+		StringBuilder stringBuilder = new StringBuilder();
+		int pos = 0;
+		int size = map.size();
+		for (Map.Entry<K,V> entry : map.entrySet())
+		{
+			stringBuilder.append(func.expand(pos==0, pos == size-1, entry.getKey(), entry.getValue()));
+			pos++;
+		}
+		return stringBuilder.toString();
+	}
+
+	public static <K, V> String expandKeys(Map<K, V> map)
+	{
+		StringBuilder stringBuilder = new StringBuilder();
+		int pos = 0;
+		for (Map.Entry<K,V> entry : map.entrySet())
+		{
+			if (0 != pos++)
+			{
+				stringBuilder.append(", ");
+			}
+			stringBuilder.append(entry.getKey());
+		}
+		return stringBuilder.toString();
+	}
+
+	public static <K, V> String expandValues(Map<K, V> map)
+	{
+		StringBuilder stringBuilder = new StringBuilder();
+		int pos = 0;
+		for (Map.Entry<K,V> entry : map.entrySet())
+		{
+			if (0 != pos++)
+			{
+				stringBuilder.append(", ");
+			}
+			stringBuilder.append(entry.getValue());
+		}
+		return stringBuilder.toString();
+	}
+
 	public static <T> String expand(T[] array)
 	{
 		StringBuilder stringBuilder = new StringBuilder();
@@ -39,12 +88,7 @@ public class StringUtils
 		return stringBuilder.toString();
 	}
 
-	public interface ExpandFunc<T>
-	{
-		String expand(T t);
-	}
-
-	public static <T> String expand(Collection<T> col, ExpandFunc<T> func)
+	public static <T> String expand(Collection<T> col)
 	{
 		StringBuilder stringBuilder = new StringBuilder();
 		int pos = 0;
@@ -54,7 +98,41 @@ public class StringUtils
 			{
 				stringBuilder.append(", ");
 			}
-			stringBuilder.append(func.expand(value));
+			stringBuilder.append(value);
+		}
+		return stringBuilder.toString();
+	}
+
+	public interface ExpandFunc<T>
+	{
+		String expand(boolean first, boolean last, T t);
+	}
+
+	public interface ExpandByteFunc
+	{
+		String expand(boolean first, boolean last, byte b);
+	}
+
+	public static <T> String expand(Collection<T> col, ExpandFunc<T> func)
+	{
+		StringBuilder stringBuilder = new StringBuilder();
+		int pos = 0;
+		for (T value : col)
+		{
+			stringBuilder.append(func.expand(pos==0, pos == col.size()-1, value));
+		}
+		return stringBuilder.toString();
+	}
+
+	public static String expand(byte[] col, ExpandByteFunc func)
+	{
+		StringBuilder stringBuilder = new StringBuilder();
+		
+		int pos=0;
+		for (byte value : col)
+		{
+			stringBuilder.append(func.expand(pos == 0, pos == col.length -1, value));
+			pos++;
 		}
 		return stringBuilder.toString();
 	}

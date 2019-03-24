@@ -1,8 +1,10 @@
 package com.tere.utils.list;
 
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
+import java.util.Vector;
 
 public class ListUtils
 {
@@ -64,23 +66,29 @@ public class ListUtils
 		}
 	}
 
-	public interface StringBuilderIteratorFunc<T>
+	public interface ListIteratorFunc<T, V, E extends Exception>
 	{
-		public void iterate(StringBuilder builder,int pos, T value);
+		public T iterate(int pos, V value) throws E;
 	}
 
-	public static <T> StringBuilder iterateString(List<T> list, StringBuilderIteratorFunc<T> iteratorFunc)
+	public static <T, V, E extends Exception> List<T> toList(Collection<V> col, ListIteratorFunc<T, V, E> iteratorFunc) throws E
 	{
-		StringBuilder stringBuilder = new StringBuilder();
 		int pos = 0;
-		for (T listValue : list)
+		List<T> retList = new Vector<T>();
+		for (V listValue : col)
 		{
-			iteratorFunc.iterate(stringBuilder, pos, listValue);
+			retList.add(iteratorFunc.iterate(pos++, listValue));
 		}
-		
-		return stringBuilder;
+		return retList;
 	}
-
+	public static <T, V, E extends Exception> void toList(List<T> list, Collection<V> col, ListIteratorFunc<T, V, E> iteratorFunc) throws E
+	{
+		int pos = 0;
+		for (V listValue : col)
+		{
+			list.add(iteratorFunc.iterate(pos++, listValue));
+		}
+	}
 
 	
 }

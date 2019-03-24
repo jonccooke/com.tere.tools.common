@@ -124,6 +124,19 @@ public class StringUtils
 		return stringBuilder.toString();
 	}
 
+	public static <T> String expand(T[] col, ExpandFunc<T> func)
+	{
+		StringBuilder stringBuilder = new StringBuilder();
+		int pos = 0;
+		for (T value : col)
+		{
+			stringBuilder.append(func.expand(pos==0, pos == col.length-1, value));
+			pos++;
+		}
+		return stringBuilder.toString();
+	}
+
+
 	public static String expand(byte[] col, ExpandByteFunc func)
 	{
 		StringBuilder stringBuilder = new StringBuilder();

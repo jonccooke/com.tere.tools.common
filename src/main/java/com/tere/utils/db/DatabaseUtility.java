@@ -7,7 +7,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -21,8 +20,8 @@ import com.tere.TereException;
 import com.tere.logging.LogManager;
 import com.tere.logging.Logger;
 import com.tere.utils.StringUtils;
+import com.tere.utils.collections.CollectionsUtils;
 import com.tere.utils.directory.FileUtils;
-import com.tere.utils.list.ListUtils;
 
 public class DatabaseUtility
 {
@@ -487,12 +486,12 @@ public class DatabaseUtility
 		
 		builder.append(getQName(path));
 		builder.append(" (");
-		ListUtils.iterate(Arrays.asList(columns), (pos, val) -> 
+		CollectionsUtils.iterate(Arrays.asList(columns), (pos, val) -> 
 			{ 
 				builder.append(pos ==0 ? val : ", " + val);
 			});
 		builder.append(") VALUES (");
-		ListUtils.iterate(Arrays.asList(params), (pos, val) -> 
+		CollectionsUtils.iterate(Arrays.asList(params), (pos, val) -> 
 		{ 
 			builder.append(pos ==0 ? '?' : ", " + '?');
 		});
@@ -500,7 +499,7 @@ public class DatabaseUtility
 
 		final PreparedStatement statement = connection.prepareStatement(builder.toString());
 
-		ListUtils.iterate(Arrays.asList(params), (pos, val) -> 
+		CollectionsUtils.iterate(Arrays.asList(params), (pos, val) -> 
 		{ 
 			try
 			{
@@ -530,7 +529,7 @@ public class DatabaseUtility
 		builder.append(colValues);
 		builder.append(")");
 
-//		ListUtils.iterate(Arrays.asList(params), (pos, val) -> 
+//		CollectionsUtils.iterate(Arrays.asList(params), (pos, val) -> 
 //		{ 
 //			builder.append(pos ==0 ? '?' : ", " + '?');
 //		});
@@ -555,7 +554,7 @@ public class DatabaseUtility
 //		builder.append(" ");
 //		builder.append(path);
 //		builder.append(" ");
-//		ListUtils.iterate(Arrays.asList(columns), (pos, val) -> { builder.append(pos ==0 ? val : ", " + val);});
+//		CollectionsUtils.iterate(Arrays.asList(columns), (pos, val) -> { builder.append(pos ==0 ? val : ", " + val);});
 //		builder.append(" ");
 //		return builder.toString();
 //	}

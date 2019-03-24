@@ -1,13 +1,33 @@
-package com.tere.utils.list;
+package com.tere.utils.collections;
 
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-public class ListUtils
+public class CollectionsUtils
 {
+	@SafeVarargs
+	public static <T> Set<T> set(T... elements)
+	{
+		return Stream.of(elements).collect(Collectors.toSet());
+	}
+
+	public static <K, V> void put(Map<K, List<V>> map, K key, V value)
+	{
+		if (!map.containsKey(key))
+		{
+			map.put(key, new CopyOnWriteArrayList<V>());
+		}
+		map.get(key).add(value);
+
+	}
 
 	public static void addUnique(Object value, List list)
 	{
@@ -71,7 +91,8 @@ public class ListUtils
 		public T iterate(int pos, V value) throws E;
 	}
 
-	public static <T, V, E extends Exception> List<T> toList(Collection<V> col, ListIteratorFunc<T, V, E> iteratorFunc) throws E
+	public static <T, V, E extends Exception> List<T> toList(Collection<V> col, ListIteratorFunc<T, V, E> iteratorFunc)
+			throws E
 	{
 		int pos = 0;
 		List<T> retList = new Vector<T>();
@@ -81,7 +102,9 @@ public class ListUtils
 		}
 		return retList;
 	}
-	public static <T, V, E extends Exception> void toList(List<T> list, Collection<V> col, ListIteratorFunc<T, V, E> iteratorFunc) throws E
+
+	public static <T, V, E extends Exception> void toList(List<T> list, Collection<V> col,
+			ListIteratorFunc<T, V, E> iteratorFunc) throws E
 	{
 		int pos = 0;
 		for (V listValue : col)
@@ -90,5 +113,14 @@ public class ListUtils
 		}
 	}
 
-	
+	public static <T, V, E extends Exception> void toList(List<T> list, V[] array,
+			ListIteratorFunc<T, V, E> iteratorFunc) throws E
+	{
+		int pos = 0;
+		for (V listValue : array)
+		{
+			list.add(iteratorFunc.iterate(pos++, listValue));
+		}
+	}
+
 }

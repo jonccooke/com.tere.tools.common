@@ -2,14 +2,18 @@ package com.tere.utils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.tere.utils.StringUtils;
+import com.tere.logging.LogManager;
+import com.tere.logging.Logger;
 
 public class StringUtilsTest
 {
+	private static Logger log = LogManager.getLogger(StringUtilsTest.class);
 
 	interface TestClass1
 	{
@@ -97,4 +101,30 @@ public class StringUtilsTest
 		Assert.assertEquals("tesd", StringUtils.removeIfPressent("testEnd", "TeN", 3, false));
 	}
 
+	@Test
+	public void expand()
+	{
+		List<String> ports = new ArrayList<String>();
+		
+		StringUtils.expand(new ArrayList<String>(), (f,l,p) -> p);
+		
+	}
+	
+	@Test
+	public void regexTest()
+	{
+		Pattern EXPAND_PATTERN = Pattern.compile("\\{.*?\\}");
+
+		String str = "select role_id, permission_id from {role_permission} where role_id = ? and permission_id = ?";
+		
+		Matcher  matcher = EXPAND_PATTERN.matcher(str);
+		if (matcher.find())
+		{
+			String found = matcher.group(0);
+			log.debug(found);
+			
+		}
+		
+		
+	}
 }

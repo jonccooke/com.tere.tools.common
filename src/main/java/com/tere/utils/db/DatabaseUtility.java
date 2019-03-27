@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 
@@ -25,7 +27,7 @@ import com.tere.utils.directory.FileUtils;
 
 public class DatabaseUtility
 {
-	private static Logger log = LogManager.getLogger(DatabaseUtility.class);
+	private Logger log = LogManager.getLogger(DatabaseUtility.class);
 
 	public static final String DATABSE_DRIVER_STR = "databaseDriver";
 	public static final String DATABSE_URL_STR = "databaseURL";
@@ -37,14 +39,15 @@ public class DatabaseUtility
 	public static final String DATABSE_CATALOG = "databaseCatalog";
 	public static final String DATABSE_ATUO_COMMIT = "autoCommit";
 	public static final String DATABASE_SCHEMA = "databaseSchema";
+	private final Pattern EXPAND_PATTERN = Pattern.compile("\\{.*?\\}");
 
-	private static BasicDataSource dataSource;
-	private static Properties properties = null;
-	private boolean intialised =false;;
-	private static boolean autoCommit =false;;
-	private static String catalog;
-	private static String schema;
-	
+	private BasicDataSource dataSource;
+	private Properties properties = null;
+	private boolean intialised = false;;
+	private boolean autoCommit = false;;
+	private String catalog;
+	private String schema;
+
 	public interface ResultSetFunction<E extends Exception>
 	{
 		public void result(ResultSet resultSet) throws SQLException, E;
@@ -57,29 +60,30 @@ public class DatabaseUtility
 
 	}
 
-	public static boolean isIntialised()
+	public boolean isIntialised()
 	{
 		return !getDataSource().isClosed();
 	}
 
-	public static void intialise(Properties properties) throws SQLException, SchemaNotSpecifiedException
+	public DatabaseUtility(Properties properties) throws SQLException, DatabaseConfigException
 	{
-		DatabaseUtility.properties = properties;
+		this.properties = properties;
 		catalog = properties.getProperty(DATABSE_CATALOG, "PUBLIC");
 		schema = properties.getProperty(DATABASE_SCHEMA);
 		if (null == schema)
 		{
 			throw new SchemaNotSpecifiedException();
 		}
-		
+
 		try (Connection connection = getDataSource().getConnection())
 		{
-			autoCommit = Boolean.parseBoolean(properties.getProperty(DATABSE_ATUO_COMMIT, Boolean.toString(connection.getAutoCommit())));
-	
+			autoCommit = Boolean.parseBoolean(
+					properties.getProperty(DATABSE_ATUO_COMMIT, Boolean.toString(connection.getAutoCommit())));
+
 		}
 	}
 
-	protected static BasicDataSource getDataSource()
+	protected BasicDataSource getDataSource()
 	{
 
 		String prop;
@@ -116,29 +120,59 @@ public class DatabaseUtility
 		return dataSource;
 	}
 
-	public static String getQName(String objectName) 
+	public String getQName(String objectName)
 	{
 		return (catalog == null ? "" : catalog + ".") + schema + "." + objectName;
 	}
-	
-	public static Connection getConnection() throws SQLException
+
+	public Connection getConnection() throws SQLException
 	{
 		Connection connection = getDataSource().getConnection();
-		
+
 		if (null != catalog)
 		{
 //			connection.setCatalog(catalog);
 //			connection.setSchema(schema);
 			connection.setAutoCommit(autoCommit);
 		}
-		
+
 		return connection;
 	}
-	public static void executeSQL(String sqlString) throws SQLException
+
+	protected String expandSQLString(String sqlString)
 	{
+		StringBuilder repString = new StringBuilder();
+
+		Matcher matcher = EXPAND_PATTERN.matcher(sqlString);
+		int startPos = 0;
+		int endPos = 0;
+		if (matcher.find())
+		{
+			int grpCount = matcher.groupCount();
+			int matchGrpNo = 0;
+//			for (int matchGrpNo = 0; matchGrpNo < grpCount; matchGrpNo++)
+			do
+			{
+				String matchGrpStr = matcher.group(matchGrpNo);
+				String tableName = matchGrpStr.substring(1, matchGrpStr.length() - 1);
+				endPos = matcher.start(matchGrpNo);
+				repString.append(sqlString, startPos, endPos);
+				repString.append(getQName(tableName));
+				startPos = matcher.end(matchGrpNo);
+				matchGrpNo++;
+			} while (matchGrpNo<grpCount);
+		}
+		repString.append(sqlString, startPos, sqlString.length());
+		return repString.toString();
+	}
+
+	public void executeSQL(String sqlString) throws SQLException
+	{
+		String expString = expandSQLString(sqlString);
+
 		try (Connection connection = getConnection())
 		{
-			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
 
 				statement.execute();
@@ -151,11 +185,13 @@ public class DatabaseUtility
 		}
 	}
 
-	public static void executeSQL(String sqlString, Object... params) throws SQLException
+	public void executeSQL(String sqlString, Object... params) throws SQLException
 	{
+		String expString = expandSQLString(sqlString);
+
 		try (Connection connection = getConnection())
 		{
-			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
 				int paramPos = 0;
 				for (Object param : params)
@@ -172,11 +208,13 @@ public class DatabaseUtility
 		}
 	}
 
-	public static <E extends Exception> void iterate(String sqlString, ResultSetFunction<E> resultSetFunction) throws SQLException, E
+	public <E extends Exception> void iterate(String sqlString, ResultSetFunction<E> resultSetFunction)
+			throws SQLException, E
 	{
+		String expString = expandSQLString(sqlString);
 		try (Connection connection = getConnection())
 		{
-			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
 				statement.execute();
 
@@ -197,12 +235,13 @@ public class DatabaseUtility
 		}
 	}
 
-	public static <E extends Exception>  void iterate(String sqlString, ResultSetFunction<E> resultSetFunction, Object... params)
-			throws SQLException, E
+	public <E extends Exception> void iterate(String sqlString, ResultSetFunction<E> resultSetFunction,
+			Object... params) throws SQLException, E
 	{
+		String expString = expandSQLString(sqlString);
 		try (Connection connection = getConnection())
 		{
-			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
 				int paramPos = 0;
 				for (Object param : params)
@@ -228,14 +267,15 @@ public class DatabaseUtility
 		}
 	}
 
-
-	public static <T, E extends Exception> T one(String sqlString, ResultSetToObjectFunction<T, E> resultSetFunction) throws SQLException, E
+	public <T, E extends Exception> T one(String sqlString, ResultSetToObjectFunction<T, E> resultSetFunction)
+			throws SQLException, E
 	{
 		T result = null;
- 
+		String expString = expandSQLString(sqlString);
+
 		try (Connection connection = getConnection())
 		{
-			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
 				statement.execute();
 
@@ -257,14 +297,15 @@ public class DatabaseUtility
 		return result;
 	}
 
-	public static <T, E extends Exception> T one(String sqlString, ResultSetToObjectFunction<T, E> resultSetFunction, Object... params)
-			throws SQLException, E
+	public <T, E extends Exception> T one(String sqlString, ResultSetToObjectFunction<T, E> resultSetFunction,
+			Object... params) throws SQLException, E
 	{
 		T result = null;
-		
+		String expString = expandSQLString(sqlString);
+
 		try (Connection connection = getConnection())
 		{
-			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
 				int paramPos = 0;
 				for (Object param : params)
@@ -292,66 +333,103 @@ public class DatabaseUtility
 	}
 
 
-	public static boolean exists(String sqlString, Object... params) throws SQLException
+	public <T, E extends Exception>T one(String tableName, String[] columns, ResultSetToObjectFunction<T, E> resultSetFunction, Object ...params) throws SQLException, E
 	{
+		return one(tableName, columns, null, resultSetFunction, params);
+	}
+	
+	public <T, E extends Exception>T one(String tableName, String[] columns, String whereClause,ResultSetToObjectFunction<T, E> resultSetFunction, Object ...params) throws SQLException, E
+	{
+		T result = null;
 
 		try (Connection connection = getConnection())
 		{
-			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			try (PreparedStatement statement = createSelectStatement(connection, expandSQLString(tableName),columns, whereClause, params))
+			{
+			
+				int paramPos = 0;
+				statement.execute();
+
+				if (!autoCommit)
+				{
+					connection.commit();
+				}
+
+				try (ResultSet resultSet = statement.getResultSet())
+				{
+					if (resultSet.next())
+					{
+						result = resultSetFunction.result(resultSet);
+					}
+				} 
+
+			}
+		}
+		return result;
+	}
+
+	
+	public boolean exists(String sqlString, Object... params) throws SQLException
+	{
+		String expString = expandSQLString(sqlString);
+
+		try (Connection connection = getConnection())
+		{
+			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
 				log.debug("Param count %d", statement.getParameterMetaData().getParameterCount());
-				for (int paramPos = 0;paramPos<params.length;paramPos++)
+				for (int paramPos = 0; paramPos < params.length; paramPos++)
 				{
 					Object param = params[paramPos];
-					
-					statement.setObject(paramPos+1, param);
+
+					statement.setObject(paramPos + 1, param);
 				}
 				try (ResultSet resultSet = statement.executeQuery())
 				{
 					return resultSet.next();
 				}
 			}
-		}
-		catch (Exception e)
+		} catch (Exception e)
 		{
 			log.error(e);
 		}
 		return false;
 	}
 
-	public static boolean exists(String sqlString, List params) throws SQLException
+	public boolean exists(String sqlString, List params) throws SQLException
 	{
+		String expString = expandSQLString(sqlString);
 
 		try (Connection connection = getConnection())
 		{
-			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
 				log.debug("Param count %d", statement.getParameterMetaData().getParameterCount());
-				for (int paramPos = 0;paramPos<params.size();paramPos++)
+				for (int paramPos = 0; paramPos < params.size(); paramPos++)
 				{
 					Object param = params.get(paramPos);
-					
-					statement.setObject(paramPos+1, param);
+
+					statement.setObject(paramPos + 1, param);
 				}
 				try (ResultSet resultSet = statement.executeQuery())
 				{
 					return resultSet.next();
 				}
 			}
-		}
-		catch (Exception e)
+		} catch (Exception e)
 		{
 			log.error(e);
 		}
 		return false;
 	}
 
-	public static boolean exists(String sqlString) throws SQLException
+	public boolean exists(String sqlString) throws SQLException
 	{
+		String expString = expandSQLString(sqlString);
 
 		try (Connection connection = getConnection())
 		{
-			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
 				statement.execute();
 				try (ResultSet resultSet = statement.executeQuery())
@@ -362,13 +440,13 @@ public class DatabaseUtility
 		}
 	}
 
-
-	public static <T,E extends Exception> List<T> list(List<T> list, String sqlString, ResultSetToObjectFunction<T, E> resultSetListFunction)
-			throws SQLException, E
+	public <T, E extends Exception> List<T> list(List<T> list, String sqlString,
+			ResultSetToObjectFunction<T, E> resultSetListFunction) throws SQLException, E
 	{
+		String expString = expandSQLString(sqlString);
 		try (Connection connection = getConnection())
 		{
-			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
 				statement.execute();
 
@@ -389,15 +467,16 @@ public class DatabaseUtility
 		}
 	}
 
-	public static <T, E extends Exception> List<T> list(List<T> list, String sqlString, ResultSetToObjectFunction<T, E> resultSetListFunction, Object... params)
-			throws SQLException, E
+	public <T, E extends Exception> List<T> list(List<T> list, String sqlString,
+			ResultSetToObjectFunction<T, E> resultSetListFunction, Object... params) throws SQLException, E
 	{
+		String expString = expandSQLString(sqlString);
 		try (Connection connection = getConnection())
 		{
-			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
 				int paramPos = 0;
-				
+
 				for (Object param : params)
 				{
 					statement.setObject(++paramPos, param);
@@ -421,15 +500,16 @@ public class DatabaseUtility
 		}
 	}
 
-	public static <T, E extends Exception> Set<T> set(Set<T> set, String sqlString, ResultSetToObjectFunction<T, E> resultSetListFunction, Object... params)
-			throws SQLException, E
+	public <T, E extends Exception> Set<T> set(Set<T> set, String sqlString,
+			ResultSetToObjectFunction<T, E> resultSetListFunction, Object... params) throws SQLException, E
 	{
+		String expString = expandSQLString(sqlString);
 		try (Connection connection = getConnection())
 		{
-			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
 				int paramPos = 0;
-				
+
 				for (Object param : params)
 				{
 					statement.setObject(++paramPos, param);
@@ -453,12 +533,13 @@ public class DatabaseUtility
 		}
 	}
 
-	public static <T, E extends Exception> Set<T> set(Set<T> set, String sqlString, ResultSetToObjectFunction<T, E> resultSetListFunction)
-			throws SQLException, E
+	public <T, E extends Exception> Set<T> set(Set<T> set, String sqlString,
+			ResultSetToObjectFunction<T, E> resultSetListFunction) throws SQLException, E
 	{
+		String expString = expandSQLString(sqlString);
 		try (Connection connection = getConnection())
 		{
-			try (PreparedStatement statement = connection.prepareStatement(sqlString))
+			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
 				statement.execute();
 
@@ -479,49 +560,56 @@ public class DatabaseUtility
 		}
 	}
 
-	protected static PreparedStatement createInsertStatement(String path, Connection connection, String[] columns, Object ... params) throws SQLException
+	protected PreparedStatement createInsertStatement(String path, Connection connection, String[] columns,
+			Object... params) throws SQLException
 	{
-	
+
 		StringBuilder builder = new StringBuilder("insert into ");
-		
+
 		builder.append(getQName(path));
 		builder.append(" (");
-		CollectionsUtils.iterate(Arrays.asList(columns), (pos, val) -> 
-			{ 
-				builder.append(pos ==0 ? val : ", " + val);
+		CollectionsUtils.iterate(Arrays.asList(columns), (pos, val) ->
+			{
+				builder.append(pos == 0 ? val : ", " + val);
 			});
 		builder.append(") VALUES (");
-		CollectionsUtils.iterate(Arrays.asList(params), (pos, val) -> 
-		{ 
-			builder.append(pos ==0 ? '?' : ", " + '?');
-		});
+		CollectionsUtils.iterate(Arrays.asList(params), (pos, val) ->
+			{
+				builder.append(pos == 0 ? '?' : ", " + '?');
+			});
 		builder.append(")");
 
 		final PreparedStatement statement = connection.prepareStatement(builder.toString());
 
-		CollectionsUtils.iterate(Arrays.asList(params), (pos, val) -> 
-		{ 
-			try
+		CollectionsUtils.iterate(Arrays.asList(params), (pos, val) ->
 			{
-				statement.setObject(pos+1, val);
-			} catch (SQLException e)
-			{
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		});
+				try
+				{
+					statement.setObject(pos + 1, val);
+				} catch (SQLException e)
+				{
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			});
 
 		return statement;
 	}
 
-	protected static PreparedStatement createInsertStatement(String path, Connection connection, LinkedHashMap<String, Object> cols) throws SQLException
+	protected PreparedStatement createInsertStatement(String path, Connection connection,
+			LinkedHashMap<String, Object> cols) throws SQLException
 	{
-	
+
 		StringBuilder builder = new StringBuilder("insert into ");
 		StringBuilder colNames = new StringBuilder();
 		StringBuilder colValues = new StringBuilder();
-		StringUtils.<String, Object>expand(cols, (f, l, k,v) -> { colNames.append(f ? k : "," + k); colValues.append(f ? "?" : ", ?");return ""; });
-		
+		StringUtils.<String, Object>expand(cols, (f, l, k, v) ->
+			{
+				colNames.append(f ? k : "," + k);
+				colValues.append(f ? "?" : ", ?");
+				return "";
+			});
+
 		builder.append(getQName(path));
 		builder.append(" (");
 		builder.append(colNames);
@@ -536,17 +624,52 @@ public class DatabaseUtility
 
 		final PreparedStatement statement = connection.prepareStatement(builder.toString());
 
-		int paramNo=1;
+		int paramNo = 1;
 		for (Map.Entry<String, Object> entry : cols.entrySet())
 		{
 			statement.setObject(paramNo++, entry.getValue());
-		};
+		}
+		;
+
+		return statement;
+	}
+
+	protected PreparedStatement createSelectStatement(Connection connection, String tableName, String[] columns,
+			String whereClause, Object... params) throws SQLException
+	{
+
+		StringBuilder builder = new StringBuilder("select ");
+
+		CollectionsUtils.iterate(Arrays.asList(columns), (pos, val) ->
+			{
+				builder.append(pos == 0 ? val : ", " + val);
+			});
+		builder.append(" FROM ");
+		builder.append(getQName(tableName));
+		if (null != whereClause)
+		{
+			builder.append(" ");	
+			builder.append(whereClause);
+			}
+		final PreparedStatement statement = connection.prepareStatement(builder.toString());
+
+		CollectionsUtils.iterate(Arrays.asList(params), (pos, val) ->
+			{
+				try
+				{
+					statement.setObject(pos + 1, val);
+				} catch (SQLException e)
+				{
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			});
 
 		return statement;
 	}
 
 	//
-//	protected static String createSelectColsString(String path,String[] columns, Object ... params)
+//	protected  String createSelectColsString(String path,String[] columns, Object ... params)
 //	{
 //		StringBuilder builder = new StringBuilder("select");
 //		
@@ -559,11 +682,11 @@ public class DatabaseUtility
 //		return builder.toString();
 //	}
 
-	public static void insert(String path, String[] columns, Object ... params) throws SQLException
+	public void insert(String tableName, String[] columns, Object... params) throws SQLException
 	{
 		try (Connection connection = getConnection())
 		{
-			try (PreparedStatement statement = createInsertStatement(path, connection, columns, params))
+			try (PreparedStatement statement = createInsertStatement(tableName, connection, columns, params))
 			{
 				statement.execute();
 
@@ -580,14 +703,15 @@ public class DatabaseUtility
 		public void insert(T value, Map<String, Object> cols) throws E;
 	}
 
-	public static <T, E extends Exception> void insert(String path, T value, InsertFunction<T, E> insertFunc) throws SQLException, E
+	public <T, E extends Exception> void insert(String tableName, T value, InsertFunction<T, E> insertFunc)
+			throws SQLException, E
 	{
 		try (Connection connection = getConnection())
 		{
 			LinkedHashMap<String, Object> cols = new LinkedHashMap<String, Object>();
 			insertFunc.insert(value, cols);
-			
-			try (PreparedStatement statement = createInsertStatement(path, connection, cols))
+
+			try (PreparedStatement statement = createInsertStatement(tableName, connection, cols))
 			{
 				statement.execute();
 
@@ -599,7 +723,7 @@ public class DatabaseUtility
 		}
 	}
 
-	public static void executeSQLFromFile(String filePath) throws SQLException, IOException
+	public void executeSQLFromFile(String filePath) throws SQLException, IOException
 	{
 		StringBuffer sqlStringBuffer = FileUtils.readTextFile(filePath);
 		String sqlString = null;
@@ -629,22 +753,23 @@ public class DatabaseUtility
 		}
 	}
 
-	public interface GetterFunc<T,  E extends TereException>
+	public interface GetterFunc<T, E extends TereException>
 	{
 		public void get(T v) throws E;
 	}
-	
-	public static <T, E extends TereException>void getNotNull(String colName, ResultSet rs, GetterFunc<T, E> getterFunc) throws SQLException, E
+
+	public <T, E extends TereException> void getNotNull(String colName, ResultSet rs, GetterFunc<T, E> getterFunc)
+			throws SQLException, E
 	{
 		T val;
-		val = (T)rs.getObject(colName);
+		val = (T) rs.getObject(colName);
 		if (!rs.wasNull())
 		{
 			getterFunc.get(val);
 		}
 	}
 
-	public static void close() throws SQLException
+	public void close() throws SQLException
 	{
 		if (null != dataSource)
 		{
@@ -652,37 +777,38 @@ public class DatabaseUtility
 		}
 	}
 
-	public static String getCatalog()
+	public String getCatalog()
 	{
 		return catalog;
 	}
 
-	public static String getSchema()
+	public String getSchema()
 	{
 		return schema;
 	}
-	
-	public static Set<String> getTableNames() throws SQLException
+
+	public Set<String> getTableNames() throws SQLException
 	{
 		Set<String> tableNames = new HashSet<String>();
-		
+
 		try (Connection connection = getConnection())
 		{
 			log.debug("Catalog %s, schema %s", connection.getCatalog(), connection.getSchema());
-			
+
 			DatabaseMetaData databaseMetaData = connection.getMetaData();
-			
-			try (ResultSet tableRs = databaseMetaData.getTables(connection.getCatalog(), connection.getSchema(), null, null))
+
+			try (ResultSet tableRs = databaseMetaData.getTables(connection.getCatalog(), connection.getSchema(), null,
+					null))
 			{
 				while (tableRs.next())
 				{
 					String tableName = tableRs.getString("TABLE_NAME");
-					tableNames .add(tableName);
+					tableNames.add(tableName);
 					log.debug(tableName);
 				}
-			} 
+			}
 		}
-		return tableNames ;
+		return tableNames;
 
 	}
 }

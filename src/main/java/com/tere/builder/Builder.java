@@ -5,6 +5,6 @@ import com.tere.TereException;
 public interface Builder<C, E extends TereException>
 {
 	
-	public C build() throws E;
+	public C build() throws E, BuilderException;
 	
 }

@@ -1,8 +1,6 @@
 package com.tere.utils.db;
 
-import com.tere.TereException;
-
-public class SchemaNotSpecifiedException extends TereException
+public class SchemaNotSpecifiedException extends DatabaseConfigException
 {
 
 }

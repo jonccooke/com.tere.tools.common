@@ -1,18 +1,16 @@
 package com.tere.builder;
 
-import com.tere.TereException;
-
 public class FieldNotSetException extends BuilderException
 {
 
-	public FieldNotSetException(String message, Throwable cause)
+	public FieldNotSetException(String classname, String field, Throwable cause)
 	{
-		super(message, cause);
+		super(String.format("Class %s, field %s", classname, field), cause);
 	}
 
-	public FieldNotSetException(String message)
+	public FieldNotSetException(String classname, String field)
 	{
-		super(message);
+		super(String.format("Class %s, field %s", classname, field));
 	}
 
 }

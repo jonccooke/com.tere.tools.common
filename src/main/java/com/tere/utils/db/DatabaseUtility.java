@@ -648,7 +648,7 @@ public class DatabaseUtility
 		builder.append(getQName(tableName));
 		if (null != whereClause)
 		{
-			builder.append(" ");	
+			builder.append(" WHERE ");	
 			builder.append(whereClause);
 			}
 		final PreparedStatement statement = connection.prepareStatement(builder.toString());

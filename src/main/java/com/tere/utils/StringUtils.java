@@ -120,6 +120,7 @@ public class StringUtils
 		for (T value : col)
 		{
 			stringBuilder.append(func.expand(pos==0, pos == col.size()-1, value));
+			pos++;
 		}
 		return stringBuilder.toString();
 	}

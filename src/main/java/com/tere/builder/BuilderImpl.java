@@ -36,7 +36,7 @@ public abstract class BuilderImpl<C, E extends TereException> implements Builder
 					{
 						if (null == field.get(value))
 						{
-							throw new FieldNotSetException(field.getName());
+							throw new FieldNotSetException(clazz.getName(), field.getName());
 						}
 					} catch (IllegalArgumentException | IllegalAccessException e)
 					{
@@ -56,7 +56,7 @@ public abstract class BuilderImpl<C, E extends TereException> implements Builder
 						Object f2val = fieldToCompare.get(value);
 						if (null == f1val && null == f2val)
 						{
-							throw new FieldNotSetException(field.getName());
+							throw new FieldNotSetException(clazz.getName(), field.getName());
 						}
 					} catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException e)
 					{

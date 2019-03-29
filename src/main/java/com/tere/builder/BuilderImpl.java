@@ -69,6 +69,36 @@ public abstract class BuilderImpl<C, E extends TereException> implements Builder
 
 	}
 
+	public <T> BuilderImpl<C, E> setObject(String fieldName, T newValue) throws BuilderException
+	{
+		try
+		{
+			Field field = value.getClass().getDeclaredField(fieldName);
+			
+			field.set(value, newValue);
+			
+		} catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e)
+		{
+			throw new BuilderException(e);
+		}
+		return this;
+	}
+
+	public BuilderImpl<C, E> set(String fieldName, String newValue) throws BuilderException
+	{
+		return setObject(fieldName, newValue);
+	}
+
+	public BuilderImpl<C, E> set(String fieldName, int newValue) throws BuilderException
+	{
+		return setObject(fieldName, newValue);
+	}
+
+	public BuilderImpl<C, E> set(String fieldName, byte[] newValue) throws BuilderException
+	{
+		return setObject(fieldName, newValue);
+	}
+
 	@Override
 	public C build() throws E, BuilderException
 	{

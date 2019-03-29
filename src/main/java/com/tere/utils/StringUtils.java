@@ -25,6 +25,22 @@ public class StringUtils
 		return stringBuilder.toString();
 	}
 
+	public static <T> String expand(Collection<T> col, String expandString)
+	{
+		StringBuilder stringBuilder = new StringBuilder();
+		int pos = 0;
+		for (T value : col)
+		{
+			if (0 != pos++)
+			{
+				stringBuilder.append(", ");
+			}
+			stringBuilder.append(expandString);
+		}
+		return stringBuilder.toString();
+	}
+
+
 	public interface ExpandMapFunc<K, V>
 	{
 		public String expand(boolean first, boolean last, K key, V value);

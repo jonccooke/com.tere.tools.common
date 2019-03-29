@@ -77,7 +77,7 @@ public class CollectionsUtils
 		public void iterate(int pos, T value);
 	}
 
-	public static <T> void iterate(List<T> list, IteratorFunc<T> iteratorFunc)
+	public static <T> void iterate(Collection<T> list, IteratorFunc<T> iteratorFunc)
 	{
 		int pos = 0;
 		for (T listValue : list)

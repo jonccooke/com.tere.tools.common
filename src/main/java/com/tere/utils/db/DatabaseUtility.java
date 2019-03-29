@@ -267,6 +267,41 @@ public class DatabaseUtility
 		}
 	}
 
+	public <E extends Exception> void iterate(String tableName,String[] columns, ResultSetFunction<E> resultSetFunction,
+			Object... params) throws SQLException, E
+	{
+		iterate(tableName, columns, null, resultSetFunction, params);
+	}
+
+	public <E extends Exception> void iterate(String tableName,String[] columns, String whereClause, ResultSetFunction<E> resultSetFunction,
+			Object... params) throws SQLException, E
+	{
+
+		try (Connection connection = getConnection())
+		{
+			try (PreparedStatement statement = createSelectStatement(connection, expandSQLString(tableName),columns, whereClause, params))
+			{
+			
+				int paramPos = 0;
+				statement.execute();
+
+				if (!autoCommit)
+				{
+					connection.commit();
+				}
+
+				try (ResultSet resultSet = statement.getResultSet())
+				{
+					while (resultSet.next())
+					{
+						resultSetFunction.result(resultSet);
+					}
+				} 
+
+			}
+		}
+	}
+
 	public <T, E extends Exception> T one(String sqlString, ResultSetToObjectFunction<T, E> resultSetFunction)
 			throws SQLException, E
 	{

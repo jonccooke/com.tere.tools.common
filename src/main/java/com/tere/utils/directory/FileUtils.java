@@ -1,5 +1,6 @@
 package com.tere.utils.directory;
 
+import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
@@ -158,13 +159,49 @@ public final class FileUtils
 		return buf;
 	}
 
-	public static byte[] readBinaryFile(String path) throws IOException
+	public static byte[] readSmallBinaryFile(String path) throws IOException
 	{
 //		String newPath = path.trim();
 //		
-		log.debug("Getting path " + path);
-		
-		return Files.readAllBytes(Paths.get(toAbsoluteFilePath(path)));
+		String resolvedPath = toAbsoluteFilePath(path);
+		log.debug("Getting path " + resolvedPath);
+
+//		int bytesToReadNo =1024;
+		byte[] buf = null;//new byte[bytesToReadNo];
+//		int numRead =-1;
+		try (FileInputStream inputStream = new FileInputStream(resolvedPath))
+		{
+			buf = inputStream.readAllBytes();
+		}
+		return buf;
+	}
+
+
+	public interface ReadBytes
+	{
+		public void read(long pos, int read, byte[] readBuf);
+	}
+	
+	public static void readLargeBinaryFile(String path, int maxSize, ReadBytes readBytes) throws IOException
+	{
+//		String newPath = path.trim();
+//		
+		String resolvedPath = toAbsoluteFilePath(path);
+		log.debug("Getting path " + resolvedPath);
+
+		int bytesToReadNo =maxSize;//2^10;
+		byte[] buf = new byte[bytesToReadNo];
+		int numRead =-1;
+		long pos=0;
+		try (FileInputStream inputStream = new FileInputStream(resolvedPath))
+		{
+			while (-1 != (numRead = inputStream.read(buf)))
+			{
+				readBytes.read(pos, numRead, buf);
+				
+				pos+=numRead;
+			}
+		}
 	}
 
 

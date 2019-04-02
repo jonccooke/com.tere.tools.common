@@ -11,6 +11,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.tere.TereException;
+
 public class CollectionsUtils
 {
 	@SafeVarargs
@@ -72,12 +74,12 @@ public class CollectionsUtils
 		return properties;
 	}
 
-	public interface IteratorFunc<T>
+	public interface IteratorFunc<T, E extends Exception>
 	{
-		public void iterate(int pos, T value);
+		public void iterate(int pos, T value) throws E;
 	}
 
-	public static <T> void iterate(Collection<T> list, IteratorFunc<T> iteratorFunc)
+	public static <T, E extends Exception> void iterate(Collection<T> list, IteratorFunc<T, E> iteratorFunc) throws E
 	{
 		int pos = 0;
 		for (T listValue : list)
@@ -121,6 +123,28 @@ public class CollectionsUtils
 		{
 			list.add(iteratorFunc.iterate(pos++, listValue));
 		}
+	}
+
+	public static <V> List<V> toList(List<V> list, V[] array) 
+	{
+		for (V arrayValue : array)
+		{
+			list.add(arrayValue);
+		}
+		
+		return list;
+	}
+
+	@SafeVarargs
+	public static <V> List<V> toList(V...values) 
+	{
+		Vector<V> list = new Vector<V>();
+		for (V listValue : values)
+		{
+			list.add(listValue);
+		}
+		
+		return list;
 	}
 
 }

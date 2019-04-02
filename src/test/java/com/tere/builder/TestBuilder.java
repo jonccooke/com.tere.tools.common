@@ -1,3 +1,4 @@
+package com.tere.builder;
 import org.junit.Test;
 
 import com.tere.TereException;

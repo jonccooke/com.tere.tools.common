@@ -1,14 +1,27 @@
 package com.tere.utils.properties;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
 
 import com.tere.TereException;
 import com.tere.builder.Builder;
+import com.tere.utils.directory.FileUtils;
 
 public class PropertiesUtils
 {
 
-	public static Properties createProperties(String... props)
+	public static Properties create(String filePath) throws IOException
+	{
+		Properties properties = new Properties();
+		try (InputStream propStream = FileUtils.getInputStream(filePath))
+		{
+			properties.load(propStream);
+		}
+		return properties;
+	}
+
+	public static Properties create(String... props)
 	{
 		Properties properties = new Properties();
 

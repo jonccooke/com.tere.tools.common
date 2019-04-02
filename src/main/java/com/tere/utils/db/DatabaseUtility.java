@@ -7,6 +7,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,7 +26,7 @@ import com.tere.utils.StringUtils;
 import com.tere.utils.collections.CollectionsUtils;
 import com.tere.utils.directory.FileUtils;
 
-public class DatabaseUtility
+public class DatabaseUtility implements AutoCloseable
 {
 	private Logger log = LogManager.getLogger(DatabaseUtility.class);
 
@@ -146,7 +147,7 @@ public class DatabaseUtility
 		Matcher matcher = EXPAND_PATTERN.matcher(sqlString);
 		int startPos = 0;
 		int endPos = 0;
-		if (matcher.find())
+		while (matcher.find(startPos))
 		{
 			int grpCount = matcher.groupCount();
 			int matchGrpNo = 0;
@@ -160,10 +161,93 @@ public class DatabaseUtility
 				repString.append(getQName(tableName));
 				startPos = matcher.end(matchGrpNo);
 				matchGrpNo++;
-			} while (matchGrpNo<grpCount);
+			} while (matchGrpNo < grpCount);
 		}
 		repString.append(sqlString, startPos, sqlString.length());
 		return repString.toString();
+	}
+
+	protected static int expandParam(PreparedStatement statement, int pos, Collection param) throws SQLException
+	{
+		int pos2 = pos;
+		for (Object p : (Collection) param)
+		{
+			statement.setObject(pos2++, p);
+		}
+		return pos2;
+	}
+
+	protected void addParams(PreparedStatement statement, Object[] params) throws SQLException
+	{
+		int pos = 1;
+
+		for (Object param : params)
+		{
+//			if (param != null)
+//			{
+//				if (param instanceof Collection)
+//				{
+//					for (Object p : (Collection) param)
+//					{
+//						statement.setObject(pos++, p);
+//					}
+//				} else if (param.getClass().isArray())
+//				{
+//					for (Object p : (Object[]) param)
+//					{
+//						statement.setObject(pos++, p);
+//					}
+//				} else
+//				{
+//					statement.setObject(pos++, param);
+//
+//				}
+//			} else
+//			{
+				statement.setObject(pos++, null);
+			}
+
+//		}
+
+	}
+
+	protected void addParams(PreparedStatement statement, List params) throws SQLException
+	{
+		if (null == params)
+		{
+			return;
+		}
+		int pos = 1;
+
+		
+		for (Object param : params)
+		{
+//			if (param != null)
+//			{
+//				if (param instanceof Collection)
+//				{
+//					for (Object p : (Collection) param)
+//					{
+//						statement.setObject(pos++, p);
+//					}
+//				} else if (param.getClass().isArray())
+//				{
+//					for (Object p : (Object[]) param)
+//					{
+//						statement.setObject(pos++, p);
+//					}
+//				} else
+//				{
+//					statement.setObject(pos++, param);
+//
+//				}
+//			} else
+//			{
+				statement.setObject(pos++, param);
+			}
+
+//		}
+
 	}
 
 	public void executeSQL(String sqlString) throws SQLException
@@ -185,7 +269,7 @@ public class DatabaseUtility
 		}
 	}
 
-	public void executeSQL(String sqlString, Object... params) throws SQLException
+	public void executeSQL(String sqlString, List params) throws SQLException
 	{
 		String expString = expandSQLString(sqlString);
 
@@ -193,11 +277,7 @@ public class DatabaseUtility
 		{
 			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
-				int paramPos = 0;
-				for (Object param : params)
-				{
-					statement.setObject(++paramPos, param);
-				}
+				addParams(statement, params);
 				statement.execute();
 
 				if (!autoCommit)
@@ -235,19 +315,15 @@ public class DatabaseUtility
 		}
 	}
 
-	public <E extends Exception> void iterate(String sqlString, ResultSetFunction<E> resultSetFunction,
-			Object... params) throws SQLException, E
+	public <E extends Exception> void iterate(String sqlString, ResultSetFunction<E> resultSetFunction, List params)
+			throws SQLException, E
 	{
 		String expString = expandSQLString(sqlString);
 		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
-				int paramPos = 0;
-				for (Object param : params)
-				{
-					statement.setObject(++paramPos, param);
-				}
+				addParams(statement, params);
 				statement.execute();
 
 				if (!autoCommit)
@@ -267,22 +343,24 @@ public class DatabaseUtility
 		}
 	}
 
-	public <E extends Exception> void iterate(String tableName,String[] columns, ResultSetFunction<E> resultSetFunction,
-			Object... params) throws SQLException, E
+	public <E extends Exception> void iterate(String tableName, String[] columns,
+			ResultSetFunction<E> resultSetFunction, List params) throws SQLException, E
 	{
 		iterate(tableName, columns, null, resultSetFunction, params);
 	}
 
-	public <E extends Exception> void iterate(String tableName,String[] columns, String whereClause, ResultSetFunction<E> resultSetFunction,
-			Object... params) throws SQLException, E
+	public <E extends Exception> void iterate(String tableName, String[] columns, String whereClause,
+			ResultSetFunction<E> resultSetFunction, List params) throws SQLException, E
 	{
 
 		try (Connection connection = getConnection())
 		{
-			try (PreparedStatement statement = createSelectStatement(connection, expandSQLString(tableName),columns, whereClause, params))
+			try (PreparedStatement statement = createSelectStatement(connection, expandSQLString(tableName), columns,
+					whereClause))
 			{
-			
-				int paramPos = 0;
+
+				addParams(statement, params);
+
 				statement.execute();
 
 				if (!autoCommit)
@@ -296,11 +374,42 @@ public class DatabaseUtility
 					{
 						resultSetFunction.result(resultSet);
 					}
-				} 
+				}
 
 			}
 		}
 	}
+
+	
+//	public <E extends Exception> void iterate(String tableName, String[] columns, String whereClause,
+//			ResultSetFunction<E> resultSetFunction, List params) throws SQLException, E
+//	{
+//
+//		try (Connection connection = getConnection())
+//		{
+//			try (PreparedStatement statement = createSelectStatement(connection, expandSQLString(tableName), columns,
+//					whereClause, params))
+//			{
+//				addParams(statement, params);
+//
+//				statement.execute();
+//
+//				if (!autoCommit)
+//				{
+//					connection.commit();
+//				}
+//
+//				try (ResultSet resultSet = statement.getResultSet())
+//				{
+//					while (resultSet.next())
+//					{
+//						resultSetFunction.result(resultSet);
+//					}
+//				}
+//
+//			}
+//		}
+//	}
 
 	public <T, E extends Exception> T one(String sqlString, ResultSetToObjectFunction<T, E> resultSetFunction)
 			throws SQLException, E
@@ -333,7 +442,7 @@ public class DatabaseUtility
 	}
 
 	public <T, E extends Exception> T one(String sqlString, ResultSetToObjectFunction<T, E> resultSetFunction,
-			Object... params) throws SQLException, E
+			List params) throws SQLException, E
 	{
 		T result = null;
 		String expString = expandSQLString(sqlString);
@@ -342,11 +451,8 @@ public class DatabaseUtility
 		{
 			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
-				int paramPos = 0;
-				for (Object param : params)
-				{
-					statement.setObject(++paramPos, param);
-				}
+				addParams(statement, params);
+
 				statement.execute();
 
 				if (!autoCommit)
@@ -367,22 +473,25 @@ public class DatabaseUtility
 		return result;
 	}
 
-
-	public <T, E extends Exception>T one(String tableName, String[] columns, ResultSetToObjectFunction<T, E> resultSetFunction, Object ...params) throws SQLException, E
+	public <T, E extends Exception> T one(String tableName, String[] columns,
+			ResultSetToObjectFunction<T, E> resultSetFunction, List params) throws SQLException, E
 	{
 		return one(tableName, columns, null, resultSetFunction, params);
 	}
-	
-	public <T, E extends Exception>T one(String tableName, String[] columns, String whereClause,ResultSetToObjectFunction<T, E> resultSetFunction, Object ...params) throws SQLException, E
+
+	public <T, E extends Exception> T one(String tableName, String[] columns, String whereClause,
+			ResultSetToObjectFunction<T, E> resultSetFunction, List params) throws SQLException, E
 	{
 		T result = null;
 
 		try (Connection connection = getConnection())
 		{
-			try (PreparedStatement statement = createSelectStatement(connection, expandSQLString(tableName),columns, whereClause, params))
+			try (PreparedStatement statement = createSelectStatement(connection, expandSQLString(tableName), columns,
+					whereClause))
 			{
-			
-				int paramPos = 0;
+
+				addParams(statement, params);
+
 				statement.execute();
 
 				if (!autoCommit)
@@ -396,39 +505,11 @@ public class DatabaseUtility
 					{
 						result = resultSetFunction.result(resultSet);
 					}
-				} 
+				}
 
 			}
 		}
 		return result;
-	}
-
-	
-	public boolean exists(String sqlString, Object... params) throws SQLException
-	{
-		String expString = expandSQLString(sqlString);
-
-		try (Connection connection = getConnection())
-		{
-			try (PreparedStatement statement = connection.prepareStatement(expString))
-			{
-				log.debug("Param count %d", statement.getParameterMetaData().getParameterCount());
-				for (int paramPos = 0; paramPos < params.length; paramPos++)
-				{
-					Object param = params[paramPos];
-
-					statement.setObject(paramPos + 1, param);
-				}
-				try (ResultSet resultSet = statement.executeQuery())
-				{
-					return resultSet.next();
-				}
-			}
-		} catch (Exception e)
-		{
-			log.error(e);
-		}
-		return false;
 	}
 
 	public boolean exists(String sqlString, List params) throws SQLException
@@ -439,13 +520,8 @@ public class DatabaseUtility
 		{
 			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
-				log.debug("Param count %d", statement.getParameterMetaData().getParameterCount());
-				for (int paramPos = 0; paramPos < params.size(); paramPos++)
-				{
-					Object param = params.get(paramPos);
+				addParams(statement, params);
 
-					statement.setObject(paramPos + 1, param);
-				}
 				try (ResultSet resultSet = statement.executeQuery())
 				{
 					return resultSet.next();
@@ -457,6 +533,28 @@ public class DatabaseUtility
 		}
 		return false;
 	}
+
+//	public boolean exists(String sqlString, List params) throws SQLException
+//	{
+//		String expString = expandSQLString(sqlString);
+//
+//		try (Connection connection = getConnection())
+//		{
+//			try (PreparedStatement statement = connection.prepareStatement(expString))
+//			{
+//				addParams(statement, params);
+//				
+//				try (ResultSet resultSet = statement.executeQuery())
+//				{
+//					return resultSet.next();
+//				}
+//			}
+//		} catch (Exception e)
+//		{
+//			log.error(e);
+//		}
+//		return false;
+//	}
 
 	public boolean exists(String sqlString) throws SQLException
 	{
@@ -503,19 +601,15 @@ public class DatabaseUtility
 	}
 
 	public <T, E extends Exception> List<T> list(List<T> list, String sqlString,
-			ResultSetToObjectFunction<T, E> resultSetListFunction, Object... params) throws SQLException, E
+			ResultSetToObjectFunction<T, E> resultSetListFunction, List params) throws SQLException, E
 	{
 		String expString = expandSQLString(sqlString);
 		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
-				int paramPos = 0;
+				addParams(statement, params);
 
-				for (Object param : params)
-				{
-					statement.setObject(++paramPos, param);
-				}
 				statement.execute();
 
 				if (!autoCommit)
@@ -536,19 +630,15 @@ public class DatabaseUtility
 	}
 
 	public <T, E extends Exception> Set<T> set(Set<T> set, String sqlString,
-			ResultSetToObjectFunction<T, E> resultSetListFunction, Object... params) throws SQLException, E
+			ResultSetToObjectFunction<T, E> resultSetListFunction, List params) throws SQLException, E
 	{
 		String expString = expandSQLString(sqlString);
 		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = connection.prepareStatement(expString))
 			{
-				int paramPos = 0;
+				addParams(statement, params);
 
-				for (Object param : params)
-				{
-					statement.setObject(++paramPos, param);
-				}
 				statement.execute();
 
 				if (!autoCommit)
@@ -595,8 +685,8 @@ public class DatabaseUtility
 		}
 	}
 
-	protected PreparedStatement createInsertStatement(String path, Connection connection, String[] columns,
-			Object... params) throws SQLException
+	protected PreparedStatement createInsertStatement(String path, Connection connection, String[] columns, List params)
+			throws SQLException
 	{
 
 		StringBuilder builder = new StringBuilder("insert into ");
@@ -608,25 +698,19 @@ public class DatabaseUtility
 				builder.append(pos == 0 ? val : ", " + val);
 			});
 		builder.append(") VALUES (");
-		CollectionsUtils.iterate(Arrays.asList(params), (pos, val) ->
+		boolean first = true;
+		for (Object param : params)
+		{
+			if (!first)
 			{
-				builder.append(pos == 0 ? '?' : ", " + '?');
-			});
+				builder.append(", ");
+			}
+			builder.append("?");
+			first =false;
+		}
 		builder.append(")");
 
 		final PreparedStatement statement = connection.prepareStatement(builder.toString());
-
-		CollectionsUtils.iterate(Arrays.asList(params), (pos, val) ->
-			{
-				try
-				{
-					statement.setObject(pos + 1, val);
-				} catch (SQLException e)
-				{
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			});
 
 		return statement;
 	}
@@ -670,7 +754,7 @@ public class DatabaseUtility
 	}
 
 	protected PreparedStatement createSelectStatement(Connection connection, String tableName, String[] columns,
-			String whereClause, Object... params) throws SQLException
+			String whereClause) throws SQLException
 	{
 
 		StringBuilder builder = new StringBuilder("select ");
@@ -683,22 +767,67 @@ public class DatabaseUtility
 		builder.append(getQName(tableName));
 		if (null != whereClause)
 		{
-			builder.append(" WHERE ");	
+			builder.append(" WHERE ");
 			builder.append(whereClause);
-			}
+		}
 		final PreparedStatement statement = connection.prepareStatement(builder.toString());
 
-		CollectionsUtils.iterate(Arrays.asList(params), (pos, val) ->
+		return statement;
+	}
+
+//	protected PreparedStatement createUpdateStatement(String path, Connection connection, String[] columns,
+//			String whereClause, List params) throws SQLException
+//	{
+//
+//		StringBuilder builder = new StringBuilder("UPDATE ");
+//
+//		builder.append(getQName(path));
+//		builder.append(" SET ");
+//		CollectionsUtils.iterate(Arrays.asList(columns), (pos, val) ->
+//			{
+//				if (pos != 0)
+//					builder.append(" , ");
+//				builder.append(columns[pos]);
+//				builder.append(" = ?");
+//			});
+//		if (null != whereClause)
+//		{
+//			builder.append(" WHERE ");
+//			builder.append(whereClause);
+//		}
+//		final PreparedStatement statement = connection.prepareStatement(builder.toString());
+//
+//		return statement;
+//	}
+//
+	protected PreparedStatement createUpdateStatement(String path, Connection connection, String[] columns,
+			String whereClause, List params) throws SQLException
+	{
+
+		StringBuilder builder = new StringBuilder("UPDATE ");
+
+		builder.append(getQName(path));
+		builder.append(" SET ");
+		CollectionsUtils.iterate(Arrays.asList(columns), (pos, val) ->
 			{
-				try
-				{
-					statement.setObject(pos + 1, val);
-				} catch (SQLException e)
-				{
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+				if (pos != 0)
+					builder.append(" , ");
+				builder.append(columns[pos]);
+				builder.append(" = ?");
 			});
+		if (null != whereClause)
+		{
+			builder.append(" WHERE ");
+			builder.append(whereClause);
+		}
+		final PreparedStatement statement = connection.prepareStatement(builder.toString());
+
+		int pos = 1;
+		for (Object param : params)
+		{
+			statement.setObject(pos++, param);
+		}
+		;
 
 		return statement;
 	}
@@ -717,12 +846,14 @@ public class DatabaseUtility
 //		return builder.toString();
 //	}
 
-	public void insert(String tableName, String[] columns, Object... params) throws SQLException
+	public void insert(String tableName, String[] columns, List params) throws SQLException
 	{
 		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = createInsertStatement(tableName, connection, columns, params))
 			{
+
+				addParams(statement, params);
 				statement.execute();
 
 				if (!autoCommit)
@@ -758,6 +889,22 @@ public class DatabaseUtility
 		}
 	}
 
+	public int update(String tableName, String[] columns, String whereClause, List params) throws SQLException
+	{
+		try (Connection connection = getConnection();
+				PreparedStatement statement = createUpdateStatement(tableName, connection, columns, whereClause,
+						params))
+		{
+			statement.execute();
+
+			if (!autoCommit)
+			{
+				connection.commit();
+			}
+			return statement.getUpdateCount();
+		}
+	}
+
 	public void executeSQLFromFile(String filePath) throws SQLException, IOException
 	{
 		StringBuffer sqlStringBuffer = FileUtils.readTextFile(filePath);
@@ -772,10 +919,11 @@ public class DatabaseUtility
 			String[] lines = sqlString.split(";");
 			for (String sqlLine : lines)
 			{
-				log.debug("executing  %s", sqlLine);
+				sqlString = expandSQLString(sqlLine);
+				log.debug("executing  %s", sqlString);
 				if (0 != sqlLine.trim().length())
 				{
-					try (PreparedStatement statement = connection.prepareStatement(sqlLine))
+					try (PreparedStatement statement = connection.prepareStatement(sqlString))
 					{
 						boolean ret = statement.execute();
 						if (!autoCommit)

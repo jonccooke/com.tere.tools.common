@@ -11,7 +11,7 @@ import com.tere.utils.directory.FileUtils;
 public class PropertiesUtils
 {
 
-	public static Properties create(String filePath) throws IOException
+	public static Properties load(String filePath) throws IOException
 	{
 		Properties properties = new Properties();
 		try (InputStream propStream = FileUtils.getInputStream(filePath))

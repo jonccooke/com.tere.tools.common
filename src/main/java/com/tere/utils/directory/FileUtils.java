@@ -67,17 +67,15 @@ public final class FileUtils
 //			
 			newPath = url.getPath() + newPath;
 			return newPath;
-		}
-		else
+		} else
 		{
 			File file = new File(newPath);
-		
+
 			return file.getAbsoluteFile().getAbsolutePath();
 		}
 	}
-	
-	public static StringBuffer readTextFile(InputStream inputStream)
-			throws IOException
+
+	public static StringBuffer readTextFile(InputStream inputStream) throws IOException
 	{
 
 		StringBuffer buf = new StringBuffer();
@@ -99,7 +97,7 @@ public final class FileUtils
 	public static InputStream getInputStream(String path) throws IOException
 	{
 		String newPath = path.trim();
-		
+
 		InputStream inputStream = null;
 		if (newPath.toLowerCase().startsWith("classpath:"))
 		{
@@ -114,8 +112,7 @@ public final class FileUtils
 			}
 			log.debug("readTextFile:with abs path:'%s'", url.getPath());
 			inputStream = url.openStream();
-		}
-		else
+		} else
 		{
 			inputStream = new FileInputStream(toAbsoluteFilePath(path));
 		}
@@ -124,20 +121,23 @@ public final class FileUtils
 		return inputStream;
 	}
 
-
 	public static StringBuffer readTextFile(String path) throws IOException
 	{
 //		String newPath = path.trim();
 //		
-		log.debug("Getting stream for path " + path);
-		InputStream inputStream = getInputStream(path);
-		log.debug("Got Stream " + inputStream);
-		
-		if (null == inputStream)
+		log.debug("Reading file %s " + path);
+		try (InputStream inputStream = getInputStream(path))
 		{
-			return null;
-		}
-//		if (newPath.toLowerCase().startsWith("classpath:"))
+			log.debug("Got Stream " + inputStream);
+
+			if (null == inputStream)
+			{
+				return null;
+			}
+			StringBuffer buf = readTextFile(inputStream);
+
+			return buf;
+		} // if (newPath.toLowerCase().startsWith("classpath:"))
 //		{
 //			newPath = newPath.substring("classPath:".length());
 //			URL url = ClassLoader.getSystemResource(".");
@@ -151,62 +151,72 @@ public final class FileUtils
 //		{
 //			inputStream = new FileInputStream(path);
 //		}
-		
-		StringBuffer buf = readTextFile(inputStream);
 
-		inputStream.close();
 
-		return buf;
 	}
 
 	public static byte[] readSmallBinaryFile(String path) throws IOException
 	{
 //		String newPath = path.trim();
 //		
-		String resolvedPath = toAbsoluteFilePath(path);
-		log.debug("Getting path " + resolvedPath);
+//		String resolvedPath = toAbsoluteFilePath(path);
+//		log.debug("Getting path " + resolvedPath);
 
 //		int bytesToReadNo =1024;
-		byte[] buf = null;//new byte[bytesToReadNo];
+		log.debug("Reading file %s " + path);
+		byte[] buf = null;// new byte[bytesToReadNo];
 //		int numRead =-1;
-		try (FileInputStream inputStream = new FileInputStream(resolvedPath))
+		try (InputStream inputStream = getInputStream(path))
 		{
 			buf = inputStream.readAllBytes();
+			return buf;
 		}
-		return buf;
 	}
 
+//	public static byte[] readSmallBinaryFile(InputStream inputStream) throws IOException
+//	{
+////		String newPath = path.trim();
+////		
+//		String resolvedPath = toAbsoluteFilePath(path);
+//		log.debug("Getting path " + resolvedPath);
+//
+////		int bytesToReadNo =1024;
+//		byte[] buf = null;//new byte[bytesToReadNo];
+////		int numRead =-1;
+////		try (FileInputStream inputStream = new FileInputStream(resolvedPath))
+////		{
+//			buf = inputStream.readAllBytes();
+////		}
+//		return buf;
+//	}
 
 	public interface ReadBytes
 	{
 		public void read(long pos, int read, byte[] readBuf);
 	}
-	
+
 	public static void readLargeBinaryFile(String path, int maxSize, ReadBytes readBytes) throws IOException
 	{
 //		String newPath = path.trim();
 //		
-		String resolvedPath = toAbsoluteFilePath(path);
-		log.debug("Getting path " + resolvedPath);
+		log.debug("Reading file %s " + path);
 
-		int bytesToReadNo =maxSize;//2^10;
+		int bytesToReadNo = maxSize;// 2^10;
 		byte[] buf = new byte[bytesToReadNo];
-		int numRead =-1;
-		long pos=0;
-		try (FileInputStream inputStream = new FileInputStream(resolvedPath))
+		int numRead = -1;
+		long pos = 0;
+		try (InputStream inputStream = getInputStream(path))
 		{
 			while (-1 != (numRead = inputStream.read(buf)))
 			{
 				readBytes.read(pos, numRead, buf);
-				
-				pos+=numRead;
+
+				pos += numRead;
 			}
 		}
 	}
 
-
-	public static final void createTextFile(String path, String fileContentsStr)
-			throws TereException
+	public static final void createTextFile(String path, String fileContentsStr) throws TereException
 	{
 		try
 		{
@@ -224,8 +234,7 @@ public final class FileUtils
 			writer.write(fileContentsStr.toCharArray());
 			writer.flush();
 			writer.close();
-		}
-		catch (IOException e)
+		} catch (IOException e)
 		{
 			throw new TereException("Cannot create file:" + path, e);
 		}
@@ -239,25 +248,21 @@ public final class FileUtils
 		{
 		case JAVA_NAMESPACE:
 			ns = ns.toLowerCase();
-			ns.replaceAll(INVALID_CHARS_REGEX, Character
-					.toString(JAVA_NS_TOKEN));
+			ns.replaceAll(INVALID_CHARS_REGEX, Character.toString(JAVA_NS_TOKEN));
 			break;
 		case CPLUSPLUS_NAMESPACE:
 			ns = ns.toUpperCase();
-			ns.replaceAll(INVALID_CHARS_REGEX, Character
-					.toString(CPLUSPLUS_NS_TOKEN));
+			ns.replaceAll(INVALID_CHARS_REGEX, Character.toString(CPLUSPLUS_NS_TOKEN));
 			break;
 		case CSHARP_NAMESPACE:
 			ns = ns.toLowerCase();
-			ns.replaceAll(INVALID_CHARS_REGEX, Character
-					.toString(CSHARP_NS_TOKEN));
+			ns.replaceAll(INVALID_CHARS_REGEX, Character.toString(CSHARP_NS_TOKEN));
 			break;
 		}
 		return ns;
 	}
 
-	public static final String toNamespace(String namespace,
-			String namespaceToken)
+	public static final String toNamespace(String namespace, String namespaceToken)
 	{
 		String ns = new String(namespace);
 
@@ -311,8 +316,7 @@ public final class FileUtils
 	 * boolean If all went successful, returns true, otherwise false.
 	 * 
 	 */
-	public static final boolean deleteDirectory(String dirPath)
-			throws DirectoryDeletionException
+	public static final boolean deleteDirectory(String dirPath) throws DirectoryDeletionException
 	{
 		if (null == dirPath)
 		{
@@ -332,15 +336,13 @@ public final class FileUtils
 			dir.delete();
 			return true;
 
-		}
-		catch (Exception e)
+		} catch (Exception e)
 		{
 			throw new DirectoryDeletionException(e);
 		}
 	}
 
-	private static final void deleteChildren(String path)
-			throws DirectoryDeletionException
+	private static final void deleteChildren(String path) throws DirectoryDeletionException
 	{
 		if (null == path)
 		{
@@ -354,14 +356,11 @@ public final class FileUtils
 			try
 			{
 				file.delete();
-			}
-			catch (Exception e)
+			} catch (Exception e)
 			{
-				throw new DirectoryDeletionException("Failed to Delete file: "
-						+ path + " : ", e);
+				throw new DirectoryDeletionException("Failed to Delete file: " + path + " : ", e);
 			}
-		}
-		else if (file.isDirectory())
+		} else if (file.isDirectory())
 		{
 			if (!path.endsWith(File.separator))
 			{
@@ -378,20 +377,18 @@ public final class FileUtils
 			try
 			{
 				file.delete();
-			}
-			catch (Exception e)
+			} catch (Exception e)
 			{
-				throw new DirectoryDeletionException(
-						"Failed to Delete directory: " + path + " : ", e);
+				throw new DirectoryDeletionException("Failed to Delete directory: " + path + " : ", e);
 			}
 		}
 	}
 
 	public static void createDirectories(String rootPath, String path, boolean errorOnFail)
-		throws DirectoryCreationException
+			throws DirectoryCreationException
 	{
 //		logger.debug("Creating directory " + path + " from " + rootPath);
-		
+
 		if ((null == rootPath) || (null == path))
 		{
 			throw new NullPointerException("createDirectories");
@@ -399,30 +396,30 @@ public final class FileUtils
 		StringBuffer rootPathBuf = new StringBuffer(rootPath.trim());
 		StringBuffer pathBuf = new StringBuffer(path.trim());
 
-		//logger.debug("Checking if separator exists as suffix in root path...");
+		// logger.debug("Checking if separator exists as suffix in root path...");
 
 		if (File.separatorChar == rootPathBuf.charAt(rootPathBuf.length() - 1))
 		{
 			rootPathBuf.deleteCharAt(pathBuf.length() - 1);
 		}
 
-		//logger.debug("Checking if separator exists as suffix in path...");
+		// logger.debug("Checking if separator exists as suffix in path...");
 
 		if (File.separatorChar == pathBuf.charAt(pathBuf.length() - 1))
 		{
 			pathBuf.deleteCharAt(pathBuf.length() - 1);
 		}
 
-		//logger.debug("Adding separator...");
+		// logger.debug("Adding separator...");
 
 		String newDir = rootPath + File.separatorChar + path;
 
-		boolean success = true; 
-		
+		boolean success = true;
+
 //		logger.debug("Creating dir object:" + newDir);
-		
+
 		File dirFile = new File(newDir);
-		
+
 //		logger.debug("Checking if dir exists");
 		if (!dirFile.exists())
 		{

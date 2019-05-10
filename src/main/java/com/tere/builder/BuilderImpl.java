@@ -15,10 +15,13 @@ public abstract class BuilderImpl<C, E extends TereException> implements Builder
 	{
 		value = createInstance();
 	}
-
 	protected void check() throws BuilderException
 	{
-		Class<?> clazz = value.getClass();
+		check(value);
+	}
+	protected void check(Object val) throws BuilderException
+	{
+		Class<?> clazz = val.getClass();
 
 		while (clazz != null && clazz != Object.class)
 		{
@@ -34,7 +37,7 @@ public abstract class BuilderImpl<C, E extends TereException> implements Builder
 				{
 					try
 					{
-						if (null == field.get(value))
+						if (null == field.get(val))
 						{
 							throw new FieldNotSetException(clazz.getName(), field.getName());
 						}
@@ -52,8 +55,8 @@ public abstract class BuilderImpl<C, E extends TereException> implements Builder
 						Field fieldToCompare = clazz.getDeclaredField(notNullIIfSet.fieldName());
 						field.setAccessible(true);
 						fieldToCompare.setAccessible(true);
-						Object f1val = field.get(value);
-						Object f2val = fieldToCompare.get(value);
+						Object f1val = field.get(val);
+						Object f2val = fieldToCompare.get(val);
 						if (null == f1val && null == f2val)
 						{
 							throw new FieldNotSetException(clazz.getName(), field.getName());

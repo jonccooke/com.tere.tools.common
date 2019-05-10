@@ -1,0 +1,1 @@
+SELECT $su.expand($columns) FROM  #if(!$su.isNullOrEmpty($catalog1))${catalog1}.#end#if(!$su.isNullOrEmpty($schema1))${schema1}.#end$table1 UNION SELECT $su.expand($columns) FROM  #if(!$su.isNullOrEmpty($catalog2))${catalog2}.#end#if(!$su.isNullOrEmpty($schema2))${schema2}.#end$table2

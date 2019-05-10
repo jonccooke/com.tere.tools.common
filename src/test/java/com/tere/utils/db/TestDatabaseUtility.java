@@ -1,6 +1,7 @@
 package com.tere.utils.db;
 
 import java.io.IOException;
+import java.sql.JDBCType;
 import java.sql.SQLException;
 
 import org.hsqldb.server.Server;
@@ -9,11 +10,14 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.tere.TereException;
+import com.tere.logging.LogManager;
+import com.tere.logging.Logger;
 import com.tere.utils.collections.CollectionsUtils;
 import com.tere.utils.properties.PropertiesUtils;
 
 public class TestDatabaseUtility
 {
+	static Logger log = LogManager.getLogger(TestDatabaseUtility.class);
 	static Server server;
 	static DatabaseUtility databaseUtility;
 
@@ -64,4 +68,48 @@ public class TestDatabaseUtility
 
 	}
 
+	@Test
+	public void testSelectWhere() throws DatabaseConfigException, SQLException, TereException
+	{
+		databaseUtility.iterate("TEST_OBJECT", new String[] {"obj_id", "obj_name", "obj_description"}, new String[] {"obj_id=0"}, (rs)-> {log.info(rs.getString(1));});
+
+	}
+
+	@Test
+	public void testSelectWhereOrderBy() throws DatabaseConfigException, SQLException, TereException
+	{
+		databaseUtility.iterate("TEST_OBJECT", new String[] {"obj_id", "obj_name", "obj_description"}, new String[] {"obj_id=0"}, new String[] {"obj_id"}, (rs)-> {log.info(rs.getString(1));});
+
+	}
+
+	@Test
+	public void testCreateTable() throws DatabaseConfigException, SQLException, TereException
+	{
+		databaseUtility.createTable("test2").schema("TESTSCHEMA").columns(ColumnsBuilder.toBuilder()
+					.column().name("col1").type(JDBCType.DOUBLE).build()
+					.column().name("col2").type(JDBCType.VARCHAR).length(10).build()
+					.column().name("col3").type(JDBCType.DECIMAL).precision(10).scale(10).build())
+					.build(); //"select * from {TEST_OBJECT} where obj_id in (?, ?, ?)", (rs)-> {}, CollectionsUtils.toList("Test1", "Test", "Test2"));
+
+	}
+//	
+//	@Test
+//	public void testUnion() throws DatabaseConfigException, SQLException, TereException
+//	{
+//		databaseUtility.createTable("test3").schema("TESTSCHEMA").columns(ColumnsBuilder.toBuilder()
+//					.column().name("col1").type(JDBCType.DOUBLE).build()
+//					.column().name("col2").type(JDBCType.VARCHAR).length(10).build()
+//					.column().name("col3").type(JDBCType.DECIMAL).precision(10).scale(10).build())
+//					.build(); //"select * from {TEST_OBJECT} where obj_id in (?, ?, ?)", (rs)-> {}, CollectionsUtils.toList("Test1", "Test", "Test2"));
+//		databaseUtility.createTable("test4").schema("TESTSCHEMA").columns(ColumnsBuilder.toBuilder()
+//				.column().name("col1").type(JDBCType.DOUBLE).build()
+//				.column().name("col2").type(JDBCType.VARCHAR).length(10).build()
+//				.column().name("col3").type(JDBCType.DECIMAL).precision(10).scale(10).build())
+//				.build(); //"select * from {TEST_OBJECT} where obj_id in (?, ?, ?)", (rs)-> {}, CollectionsUtils.toList("Test1", "Test", "Test2"));
+//
+//		databaseUtility.createUnionStatement(connection, catalog1, schema1, tableName1, catalog2, schema2, tableName2, columns)
+//	}
+
+
+	
 }

@@ -88,6 +88,29 @@ public class CollectionsUtils
 		}
 	}
 
+	public static <T, V, E extends Exception> T[] toArray(Collection<V> col, T[] array, ListIteratorFunc<T, V, E> iteratorFunc)
+			throws E
+	{
+		int pos = 0;
+		for (V listValue : col)
+		{
+			array[pos] = iteratorFunc.iterate(pos++, listValue);
+		}
+		
+		return array;
+	}
+
+	public static <T, V, E extends Exception> T[] toArray(V[] col, T[] array, ListIteratorFunc<T, V, E> iteratorFunc)
+			throws E
+	{
+		int pos = 0;
+		for (V value : col)
+		{
+			array[pos] = iteratorFunc.iterate(pos++, value);
+		}
+		
+		return array;
+	}
 	public interface ListIteratorFunc<T, V, E extends Exception>
 	{
 		public T iterate(int pos, V value) throws E;

@@ -10,7 +10,17 @@ public class StringUtils
 	public final static int EOL = -2;
 	public final static int SOL = -1;
 
-	public static <T> String expand(T[] array, String expandString)
+	public static boolean isNull(String value)
+	{
+		return value ==null;
+	}
+
+	public static boolean isNullOrEmpty(String value)
+	{
+		return !(value !=null && value.length() != 0);
+	}
+
+	public static <T> String expand(T[] array, String separatorString)
 	{
 		StringBuilder stringBuilder = new StringBuilder();
 		int pos = 0;
@@ -18,9 +28,41 @@ public class StringUtils
 		{
 			if (0 != pos++)
 			{
+				stringBuilder.append(separatorString);
+			}
+			stringBuilder.append(value);
+		}
+		return stringBuilder.toString();
+	}
+
+	public static <T> String expand(Collection<T> col, String separatorString, String postString)
+	{
+		StringBuilder stringBuilder = new StringBuilder();
+		int pos = 0;
+		for (T value : col)
+		{
+			if (0 != pos++)
+			{
 				stringBuilder.append(", ");
 			}
-			stringBuilder.append(expandString);
+			stringBuilder.append(value);
+			stringBuilder.append(postString);
+		}
+		return stringBuilder.toString();
+	}
+
+	public static <T> String expand(T[] array, String separatorString, String postString)
+	{
+		StringBuilder stringBuilder = new StringBuilder();
+		int pos = 0;
+		for (T value : array)
+		{
+			if (0 != pos++)
+			{
+				stringBuilder.append(separatorString);
+			}
+			stringBuilder.append(value);
+			stringBuilder.append(postString);
 		}
 		return stringBuilder.toString();
 	}

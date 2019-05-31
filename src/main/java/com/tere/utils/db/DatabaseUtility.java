@@ -438,7 +438,7 @@ public class DatabaseUtility implements AutoCloseable
 	}
 
 	public <E extends Exception> void iterate(String tableName, String[] columns,
-			ResultSetFunction<E> resultSetFunction, List params) throws SQLException, E, TereException
+			List params, ResultSetFunction<E> resultSetFunction) throws SQLException, E, TereException
 	{
 		iterate(catalog, schema, tableName, columns, null, null, null, -1, -1, params, resultSetFunction);
 
@@ -616,9 +616,15 @@ public class DatabaseUtility implements AutoCloseable
 	}
 
 	public <T, E extends Exception> T one(String tableName, String[] columns,
-			ResultSetToObjectFunction<T, E> resultSetFunction, List params) throws SQLException, E, TereException
+			 List params, ResultSetToObjectFunction<T, E> resultSetFunction) throws SQLException, E, TereException
 	{
 		return one(catalog, schema, tableName, columns, null, null, null, -1, -1, params, resultSetFunction);
+	}
+
+	public <T, E extends Exception> T one(String tableName, String[] columns,
+			 ResultSetToObjectFunction<T, E> resultSetFunction) throws SQLException, E, TereException
+	{
+		return one(catalog, schema, tableName, columns, null, null, null, -1, -1, null, resultSetFunction);
 	}
 
 	public <T, E extends Exception> T one(String tableName, String[] columns, String[] whereItems,
@@ -626,6 +632,13 @@ public class DatabaseUtility implements AutoCloseable
 	{
 		
 		return one(catalog, schema, tableName, columns, whereItems, null, null, -1, -1, params, resultSetFunction);
+	}
+
+	public <T, E extends Exception> T one(String tableName, String[] columns, String[] whereItems,
+			ResultSetToObjectFunction<T, E> resultSetFunction) throws SQLException, E, TereException
+	{
+		
+		return one(catalog, schema, tableName, columns, whereItems, null, null, -1, -1, null, resultSetFunction);
 	}
 
 	public boolean exists(String sqlString, List params) throws SQLException

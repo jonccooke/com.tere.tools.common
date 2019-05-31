@@ -86,6 +86,14 @@ public class DateUtils
 		return calendar.get(field);
 	}
 
+	public static int get(long dateVal, int field)
+	{
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(new Date(dateVal));
+		return calendar.get(field);
+	}
+
+
 	public static Date add(Date srcDate, Date dateToAdd)
 	{
 		long timeInMs = srcDate.getTime() + dateToAdd.getTime();

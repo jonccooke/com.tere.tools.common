@@ -220,6 +220,10 @@ public class DatabaseUtility implements AutoCloseable
 
 	protected void addParams(PreparedStatement statement, Object[] params) throws SQLException
 	{
+		if (null == params)
+		{
+			return;
+		}
 		int pos = 1;
 
 		for (Object param : params)
@@ -466,7 +470,7 @@ public class DatabaseUtility implements AutoCloseable
 	public <E extends Exception> void iterate(String tableName, String[] columns, String[] whereItems, List params,
 			ResultSetFunction<E> resultSetFunction) throws TereException, SQLException, E
 	{
-		iterate(catalog, schema, tableName, columns, whereItems, null, null, -1, -1, null, resultSetFunction);
+		iterate(catalog, schema, tableName, columns, whereItems, null, null, -1, -1, params, resultSetFunction);
 		
 	}
 
@@ -487,10 +491,8 @@ public class DatabaseUtility implements AutoCloseable
 		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = createSelectStatement(connection, catalog, schema, tableName, columns,
-					whereItems, orderByItems, groupByItems, limit, offset))
+					whereItems, orderByItems, groupByItems, limit, offset, params))
 			{
-
-				addParams(statement, params);
 
 				statement.execute();
 
@@ -528,10 +530,8 @@ public class DatabaseUtility implements AutoCloseable
 		try (Connection connection = getConnection())
 		{
 			try (PreparedStatement statement = createSelectStatement(connection, catalog, schema, tableName, columns,
-					whereItems, orderByItems, groupByItems, limit, offset))
+					whereItems, orderByItems, groupByItems, limit, offset, params))
 			{
-
-				addParams(statement, params);
 
 				statement.execute();
 
@@ -846,9 +846,10 @@ public class DatabaseUtility implements AutoCloseable
 		}
 		builder.append(")");
 
-		final PreparedStatement statement = connection.prepareStatement(builder.toString());
+		final PreparedStatement preparedStatement = connection.prepareStatement(builder.toString());
 
-		return statement;
+		addParams(preparedStatement, params);
+		return preparedStatement;
 	}
 
 	public PreparedStatement createInsertStatement(String catalog, String schema, String tableName,
@@ -922,7 +923,7 @@ public class DatabaseUtility implements AutoCloseable
 	}
 
 	public PreparedStatement createSelectStatement(Connection connection, String catalog, String schema,
-			String tableName, String[] columns, String[] whereItems, String[] orderByItems, String[] groupByItems,long limit, long offset)
+			String tableName, String[] columns, String[] whereItems, String[] orderByItems, String[] groupByItems,long limit, long offset, List params)
 			throws TereException
 	{
 		VelocityContext context = new VelocityContext();
@@ -947,6 +948,7 @@ public class DatabaseUtility implements AutoCloseable
 
 			log.debug(stmtStr);
 			PreparedStatement preparedStatement = connection.prepareStatement(stmtStr);
+			addParams(preparedStatement, params);
 			return preparedStatement;
 		} catch (Exception e)
 		{
@@ -973,16 +975,10 @@ public class DatabaseUtility implements AutoCloseable
 			builder.append(" WHERE ");
 			builder.append(StringUtils.expand(whereItems));
 		}
-		final PreparedStatement statement = connection.prepareStatement(builder.toString());
+		final PreparedStatement preparedStatement = connection.prepareStatement(builder.toString());
+		addParams(preparedStatement, params);
 
-		int pos = 1;
-		for (Object param : params)
-		{
-			statement.setObject(pos++, param);
-		}
-		;
-
-		return statement;
+		return preparedStatement;
 	}
 	
 	public PreparedStatement createUnionStatement(Connection connection, String catalog1, String schema1,
@@ -1094,7 +1090,6 @@ public class DatabaseUtility implements AutoCloseable
 					params))
 			{
 
-				addParams(statement, params);
 				statement.execute();
 
 				if (!autoCommit)
@@ -1263,5 +1258,12 @@ public class DatabaseUtility implements AutoCloseable
 	}
 
 
+	public ResultSet getTableSchema(Connection connection, String tableName) throws SQLException
+	{
+		DatabaseMetaData databaseMetaData = connection.getMetaData();
+
+		return databaseMetaData.getColumns(connection.getCatalog(), connection.getSchema(), tableName, null);
+	}
+	
 	// public CreateTableBuilder createTable(String name, Column)
 }

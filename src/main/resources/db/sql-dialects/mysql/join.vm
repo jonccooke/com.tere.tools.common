@@ -1,0 +1,1 @@
+SELECT $su.expand($columns) FROM $table1 $joinType JOIN $table2 #if(!$su.isNullOrEmpty($onItems)) ON $su.expand($onItems, " AND ")#end#if(!$su.isNullOrEmpty($whereItems)) WHERE $su.expand($whereItems, ", ", " AND ")#end 

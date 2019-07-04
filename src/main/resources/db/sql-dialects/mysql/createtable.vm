@@ -1,4 +1,4 @@
-CREATE TABLE #if (${table.catalog})${table.catalog}.#end#if (${table.schema})${table.schema}.#end${table.name}
+CREATE TABLE ${table.schema}.${table.name}
 (
 #foreach ($column in $table.columns)
 $column.name ${column.jdbcType} #if(${column.length} !=-1)(${column.length})#end #if(${column.precision} !=-1)(${column.precision}, ${column.scale})#end,

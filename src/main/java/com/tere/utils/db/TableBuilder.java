@@ -1,13 +1,9 @@
 package com.tere.utils.db;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.util.LinkedHashMap;
 
 import com.tere.TereException;
 import com.tere.builder.Builder;
-import com.tere.builder.BuilderException;
 import com.tere.builder.BuilderImpl;
 
 public class TableBuilder extends BuilderImpl<Table, TereException> implements Builder<Table, TereException>
@@ -24,6 +20,7 @@ public class TableBuilder extends BuilderImpl<Table, TereException> implements B
 	
 	public TableBuilder catalog(String catalog)
 	{
+		value.catalog = catalog ;
 		return this;
 	}
 	public TableBuilder schema(String schema)
@@ -48,20 +45,21 @@ public class TableBuilder extends BuilderImpl<Table, TereException> implements B
 		return new Table();
 	}
 
-	@Override
-	public Table build() throws TereException, BuilderException
-	{
-		Table table  = super.build();
-		try (Connection connection = databaseUtility.getConnection())
-		{
-			try (PreparedStatement preparedStatement = databaseUtility.createTableStatement(connection, table))
-			{
-				preparedStatement.execute();
-			}
-			return table;
-		} catch (SQLException e)
-		{
-			throw new TereException(e);
-		}
-	}
+//	@Override
+//	public Table build() throws TereException, BuilderException
+//	{
+//		Table table  = super.build();
+//		boolean result = true;
+//		try (Connection connection = databaseUtility.getConnection())
+//		{
+//			try (PreparedStatement preparedStatement = databaseUtility.createTableStatement(connection, table))
+//			{
+//				result = preparedStatement.execute();
+//			}
+//			return table;
+//		} catch (SQLException e)
+//		{
+//			throw new TereException(e);
+//		}
+//	}
 }

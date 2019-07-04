@@ -5,9 +5,11 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.JDBCType;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -26,6 +28,7 @@ import org.apache.velocity.exception.ParseErrorException;
 import org.apache.velocity.exception.ResourceNotFoundException;
 
 import com.tere.TereException;
+import com.tere.builder.BuilderException;
 import com.tere.logging.LogManager;
 import com.tere.logging.Logger;
 import com.tere.utils.StringUtils;
@@ -47,8 +50,18 @@ public class DatabaseUtility implements AutoCloseable
 	public static final String DATABSE_CATALOG = "databaseCatalog";
 	public static final String DATABSE_ATUO_COMMIT = "autoCommit";
 	public static final String DATABASE_SCHEMA = "databaseSchema";
-
 	public static final String SQL_DIALECT = "hsqldb";
+
+	private static final int CAT_NAME_POS = 1;
+	private static final int SCHEMA_NAME_POS = 2;
+	private static final int TABLE_NAME_POS = 3;
+	private static final int DATA_TYPE_POS = 5;
+	private static final int COLUMN_NAME_POS = 4;
+	private static final int NULLABLE_POS = 11;
+	private static final int COLUMN_SIZE_POS = 7;
+	private static final int DECIMAL_DIGITS = 9;
+	private static final int NUM_PREC_RADIX = 10;
+
 	private final Pattern EXPAND_PATTERN = Pattern.compile("\\{.*?\\}");
 
 	private BasicDataSource dataSource;
@@ -87,12 +100,16 @@ public class DatabaseUtility implements AutoCloseable
 		this.properties = properties;
 		catalog = properties.getProperty(DATABSE_CATALOG, "PUBLIC");
 		schema = properties.getProperty(DATABASE_SCHEMA);
-		if (null == schema)
-		{
-			throw new SchemaNotSpecifiedException();
-		}
+//		if (null == schema)
+//		{
+//			throw new SchemaNotSpecifiedException();
+//		}
 		dialect = properties.getProperty(SQL_DIALECT, "hsql-db").toLowerCase();
 
+		if (dialect.equals("mysql"))
+		{
+			catalog = null;
+		}
 		try
 		{
 			dialects = PropertiesUtils.load("classpath:db/sql-dialects/sql-dialects.properties");
@@ -101,6 +118,12 @@ public class DatabaseUtility implements AutoCloseable
 			{
 				autoCommit = Boolean.parseBoolean(
 						properties.getProperty(DATABSE_ATUO_COMMIT, Boolean.toString(connection.getAutoCommit())));
+
+				if (null == schema)
+				{
+					schema = connection.getSchema();
+				}
+				String catalog = connection.getCatalog();
 
 			}
 //			new org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader().
@@ -112,10 +135,8 @@ public class DatabaseUtility implements AutoCloseable
 					.toString();
 			selectStatementStr = FileUtils.readTextFile("classpath:db/sql-dialects/" + dialect + "/select.vm")
 					.toString();
-			unionStatementStr = FileUtils.readTextFile("classpath:db/sql-dialects/" + dialect + "/union.vm")
-					.toString();
-			joinStatementStr = FileUtils.readTextFile("classpath:db/sql-dialects/" + dialect + "/join.vm")
-					.toString();
+			unionStatementStr = FileUtils.readTextFile("classpath:db/sql-dialects/" + dialect + "/union.vm").toString();
+			joinStatementStr = FileUtils.readTextFile("classpath:db/sql-dialects/" + dialect + "/join.vm").toString();
 //					velocityEngine
 //					.getTemplate(path);
 		} catch (ResourceNotFoundException | ParseErrorException | SQLException | IOException e)
@@ -331,8 +352,9 @@ public class DatabaseUtility implements AutoCloseable
 			}
 		}
 	}
-	
-	public <E extends Exception> void executeSQL(String sqlString, ResultSetFunction<E> resultSetFunction) throws SQLException, E
+
+	public <E extends Exception> void executeSQL(String sqlString, ResultSetFunction<E> resultSetFunction)
+			throws SQLException, E
 	{
 		String expString = expandSQLString(sqlString);
 
@@ -358,7 +380,8 @@ public class DatabaseUtility implements AutoCloseable
 		}
 	}
 
-	public <E extends Exception> void executeSQL(String sqlString, List params, ResultSetFunction<E> resultSetFunction) throws SQLException, E
+	public <E extends Exception> void executeSQL(String sqlString, List params, ResultSetFunction<E> resultSetFunction)
+			throws SQLException, E
 	{
 		String expString = expandSQLString(sqlString);
 
@@ -384,7 +407,6 @@ public class DatabaseUtility implements AutoCloseable
 			}
 		}
 	}
-
 
 	public <E extends Exception> void iterate(String sqlString, ResultSetFunction<E> resultSetFunction)
 			throws SQLException, E
@@ -441,8 +463,8 @@ public class DatabaseUtility implements AutoCloseable
 		}
 	}
 
-	public <E extends Exception> void iterate(String tableName, String[] columns,
-			List params, ResultSetFunction<E> resultSetFunction) throws SQLException, E, TereException
+	public <E extends Exception> void iterate(String tableName, String[] columns, List params,
+			ResultSetFunction<E> resultSetFunction) throws SQLException, E, TereException
 	{
 		iterate(catalog, schema, tableName, columns, null, null, null, -1, -1, params, resultSetFunction);
 
@@ -461,8 +483,8 @@ public class DatabaseUtility implements AutoCloseable
 		iterate(catalog, schema, tableName, columns, whereItems, null, null, -1, -1, null, resultSetFunction);
 	}
 
-	public <E extends Exception> void iterate(String tableName, String[] columns, String[] whereItems,String[] orderByItems,
-			ResultSetFunction<E> resultSetFunction) throws TereException, SQLException, E
+	public <E extends Exception> void iterate(String tableName, String[] columns, String[] whereItems,
+			String[] orderByItems, ResultSetFunction<E> resultSetFunction) throws TereException, SQLException, E
 	{
 		iterate(catalog, schema, tableName, columns, whereItems, orderByItems, null, -1, -1, null, resultSetFunction);
 	}
@@ -471,20 +493,11 @@ public class DatabaseUtility implements AutoCloseable
 			ResultSetFunction<E> resultSetFunction) throws TereException, SQLException, E
 	{
 		iterate(catalog, schema, tableName, columns, whereItems, null, null, -1, -1, params, resultSetFunction);
-		
+
 	}
 
-	public <E extends Exception> void iterate(
-			String catalog, 
-			String schema, 
-			String tableName, 
-			String[] columns, 
-			String[] whereItems,
-			String[] orderByItems, 
-			String[] groupByItems, 
-			long limit, 
-			long offset,
-			List params, 
+	public <E extends Exception> void iterate(String catalog, String schema, String tableName, String[] columns,
+			String[] whereItems, String[] orderByItems, String[] groupByItems, long limit, long offset, List params,
 			ResultSetFunction<E> resultSetFunction) throws TereException, SQLException, E
 	{
 
@@ -512,17 +525,9 @@ public class DatabaseUtility implements AutoCloseable
 			}
 		}
 	}
-	public<T, E extends Exception> T one(
-			String catalog, 
-			String schema, 
-			String tableName, 
-			String[] columns, 
-			String[] whereItems,
-			String[] orderByItems, 
-			String[] groupByItems,
-			long limit, 
-			long offset,
-			List params, 
+
+	public <T, E extends Exception> T one(String catalog, String schema, String tableName, String[] columns,
+			String[] whereItems, String[] orderByItems, String[] groupByItems, long limit, long offset, List params,
 			ResultSetToObjectFunction<T, E> resultSetFunction) throws TereException, SQLException, E
 	{
 		T result = null;
@@ -552,7 +557,7 @@ public class DatabaseUtility implements AutoCloseable
 		}
 		return result;
 	}
-	
+
 	public <T, E extends Exception> T one(String sqlString, ResultSetToObjectFunction<T, E> resultSetFunction)
 			throws SQLException, E
 	{
@@ -615,29 +620,29 @@ public class DatabaseUtility implements AutoCloseable
 		return result;
 	}
 
-	public <T, E extends Exception> T one(String tableName, String[] columns,
-			 List params, ResultSetToObjectFunction<T, E> resultSetFunction) throws SQLException, E, TereException
+	public <T, E extends Exception> T one(String tableName, String[] columns, List params,
+			ResultSetToObjectFunction<T, E> resultSetFunction) throws SQLException, E, TereException
 	{
 		return one(catalog, schema, tableName, columns, null, null, null, -1, -1, params, resultSetFunction);
 	}
 
 	public <T, E extends Exception> T one(String tableName, String[] columns,
-			 ResultSetToObjectFunction<T, E> resultSetFunction) throws SQLException, E, TereException
+			ResultSetToObjectFunction<T, E> resultSetFunction) throws SQLException, E, TereException
 	{
 		return one(catalog, schema, tableName, columns, null, null, null, -1, -1, null, resultSetFunction);
 	}
 
-	public <T, E extends Exception> T one(String tableName, String[] columns, String[] whereItems,
-			List params, ResultSetToObjectFunction<T, E> resultSetFunction) throws SQLException, E, TereException
+	public <T, E extends Exception> T one(String tableName, String[] columns, String[] whereItems, List params,
+			ResultSetToObjectFunction<T, E> resultSetFunction) throws SQLException, E, TereException
 	{
-		
+
 		return one(catalog, schema, tableName, columns, whereItems, null, null, -1, -1, params, resultSetFunction);
 	}
 
 	public <T, E extends Exception> T one(String tableName, String[] columns, String[] whereItems,
 			ResultSetToObjectFunction<T, E> resultSetFunction) throws SQLException, E, TereException
 	{
-		
+
 		return one(catalog, schema, tableName, columns, whereItems, null, null, -1, -1, null, resultSetFunction);
 	}
 
@@ -923,8 +928,8 @@ public class DatabaseUtility implements AutoCloseable
 	}
 
 	public PreparedStatement createSelectStatement(Connection connection, String catalog, String schema,
-			String tableName, String[] columns, String[] whereItems, String[] orderByItems, String[] groupByItems,long limit, long offset, List params)
-			throws TereException
+			String tableName, String[] columns, String[] whereItems, String[] orderByItems, String[] groupByItems,
+			long limit, long offset, List params) throws TereException
 	{
 		VelocityContext context = new VelocityContext();
 //	StringWriter writer = new StringWriter();
@@ -955,6 +960,7 @@ public class DatabaseUtility implements AutoCloseable
 			throw new TereException(e);
 		}
 	}
+
 	public PreparedStatement createUpdateStatement(String path, Connection connection, String[] columns,
 			String[] whereItems, List params) throws SQLException
 	{
@@ -980,10 +986,9 @@ public class DatabaseUtility implements AutoCloseable
 
 		return preparedStatement;
 	}
-	
+
 	public PreparedStatement createUnionStatement(Connection connection, String catalog1, String schema1,
-			String tableName1, String catalog2, String schema2,
-			String tableName2, String[] columns)
+			String tableName1, String catalog2, String schema2, String tableName2, String[] columns)
 			throws TereException
 	{
 		VelocityContext context = new VelocityContext();
@@ -1010,11 +1015,10 @@ public class DatabaseUtility implements AutoCloseable
 			throw new TereException(e);
 		}
 	}
-	
-	protected PreparedStatement createJoinStatement(Connection connection, String joinType, String catalog1, String schema1,
-			String tableName1, String catalog2, String schema2,
-			String tableName2, String[] columns, String[] whereItems, String[] onItems)
-			throws TereException
+
+	protected PreparedStatement createJoinStatement(Connection connection, String joinType, String catalog1,
+			String schema1, String tableName1, String catalog2, String schema2, String tableName2, String[] columns,
+			String[] whereItems, String[] onItems) throws TereException
 	{
 		VelocityContext context = new VelocityContext();
 		try (StringWriter writer = new StringWriter(); StringReader reader = new StringReader(joinStatementStr))
@@ -1041,46 +1045,36 @@ public class DatabaseUtility implements AutoCloseable
 	}
 
 	public PreparedStatement createCrossJoinStatement(Connection connection, String catalog1, String schema1,
-			String tableName1, String catalog2, String schema2,
-			String tableName2, String[] columns, String[] whereItems, String[] onItems)
-			throws TereException
+			String tableName1, String catalog2, String schema2, String tableName2, String[] columns,
+			String[] whereItems, String[] onItems) throws TereException
 	{
-		return createJoinStatement(connection, "CROSS",  catalog1,  schema1,
-			 tableName1,  catalog2,  schema2,
-			 tableName2, columns, whereItems, onItems);
+		return createJoinStatement(connection, "CROSS", catalog1, schema1, tableName1, catalog2, schema2, tableName2,
+				columns, whereItems, onItems);
 	}
 
 	public PreparedStatement createLeftJoinStatement(Connection connection, String catalog1, String schema1,
-			String tableName1, String catalog2, String schema2,
-			String tableName2, String[] columns, String[] whereItems, String[] onItems, boolean outer)
-			throws TereException
+			String tableName1, String catalog2, String schema2, String tableName2, String[] columns,
+			String[] whereItems, String[] onItems, boolean outer) throws TereException
 	{
-		return createJoinStatement(connection, outer ? "LEFT OUTER" : "LEFT",  catalog1,  schema1,
-			 tableName1,  catalog2,  schema2,
-			 tableName2, columns, whereItems, onItems);
+		return createJoinStatement(connection, outer ? "LEFT OUTER" : "LEFT", catalog1, schema1, tableName1, catalog2,
+				schema2, tableName2, columns, whereItems, onItems);
 	}
 
 	public PreparedStatement createRightJoinStatement(Connection connection, String catalog1, String schema1,
-			String tableName1, String catalog2, String schema2,
-			String tableName2, String[] columns, String[] whereItems, String[] onItems, boolean outer)
-			throws TereException
+			String tableName1, String catalog2, String schema2, String tableName2, String[] columns,
+			String[] whereItems, String[] onItems, boolean outer) throws TereException
 	{
-		return createJoinStatement(connection, outer ? "RIGHT OUTER" : "RIGHT",  catalog1,  schema1,
-			 tableName1,  catalog2,  schema2,
-			 tableName2, columns, whereItems, onItems);
+		return createJoinStatement(connection, outer ? "RIGHT OUTER" : "RIGHT", catalog1, schema1, tableName1, catalog2,
+				schema2, tableName2, columns, whereItems, onItems);
 	}
-
 
 	public PreparedStatement createInnerJoinStatement(Connection connection, String catalog1, String schema1,
-			String tableName1, String catalog2, String schema2,
-			String tableName2, String[] columns, String[] whereItems, String[] onItems)
-			throws TereException
+			String tableName1, String catalog2, String schema2, String tableName2, String[] columns,
+			String[] whereItems, String[] onItems) throws TereException
 	{
-		return createJoinStatement(connection, "INNER",  catalog1,  schema1,
-			 tableName1,  catalog2,  schema2,
-			 tableName2, columns, whereItems, onItems);
+		return createJoinStatement(connection, "INNER", catalog1, schema1, tableName1, catalog2, schema2, tableName2,
+				columns, whereItems, onItems);
 	}
-
 
 	public void insert(String tableName, String[] columns, List params) throws SQLException
 	{
@@ -1128,8 +1122,7 @@ public class DatabaseUtility implements AutoCloseable
 	public int update(String tableName, String[] columns, String[] whereItems, List params) throws SQLException
 	{
 		try (Connection connection = getConnection();
-				PreparedStatement statement = createUpdateStatement(tableName, connection, columns, whereItems,
-						params))
+				PreparedStatement statement = createUpdateStatement(tableName, connection, columns, whereItems, params))
 		{
 			statement.execute();
 
@@ -1254,16 +1247,89 @@ public class DatabaseUtility implements AutoCloseable
 
 	public TableBuilder createTable(String tableName) throws TereException
 	{
-		return new TableBuilder(this, tableName);
+		return new TableBuilder(this, tableName)
+		{
+
+			@Override
+			public Table build() throws TereException, BuilderException
+			{
+				Table table =  super.build();
+				
+				boolean result = true;
+				try (Connection connection = getConnection())
+				{
+					try (PreparedStatement preparedStatement = createTableStatement(connection, table))
+					{
+						result = preparedStatement.execute();
+					}
+					return table;
+				} catch (SQLException e)
+				{
+					throw new TereException(e);
+				}
+
+			}
+		};
 	}
 
-
+	public Table describeTable(String tableName) throws TereException, SQLException
+	{
+		
+//		String[] paths = tablePath.split("[.]");
+		
+		try (Connection connection = getConnection())
+		{
+			DatabaseMetaData databaseMetaData = connection.getMetaData();
+			ColumnsBuilder columnsBuilder = ColumnsBuilder.toBuilder();
+			try (ResultSet resultSet = databaseMetaData.getColumns(catalog, schema, tableName, null))
+			{
+				while (resultSet.next())
+				{
+//					catalogName = resultSet.getString(CAT_NAME_POS);
+//					schemaName = resultSet.getString(SCHEMA_NAME_POS);
+//					tableName = resultSet.getString(TABLE_NAME_POS);
+					ColumnBuilder columnBuilder = columnsBuilder.column().name(resultSet.getString(COLUMN_NAME_POS))
+							.nullable(resultSet.getBoolean(NULLABLE_POS))
+							.type(JDBCType.valueOf(resultSet.getInt(DATA_TYPE_POS)));
+					switch (resultSet.getShort(DATA_TYPE_POS))
+					{
+						case Types.DECIMAL:
+						case Types.NUMERIC:
+							columnBuilder
+								.scale(resultSet.getInt(DECIMAL_DIGITS))
+								.precision(resultSet.getInt(COLUMN_SIZE_POS));
+							break;
+						case Types.BLOB:
+						case Types.CLOB:
+						case Types.JAVA_OBJECT:
+						case Types.LONGNVARCHAR:
+						case Types.LONGVARBINARY:
+						case Types.LONGVARCHAR:
+						case Types.NCLOB:
+						case Types.NVARCHAR:
+						case Types.STRUCT:
+						case Types.ARRAY:
+						case Types.VARBINARY:
+						case Types.VARCHAR:
+							columnBuilder.length(resultSet.getInt(COLUMN_SIZE_POS));
+							break;
+					}
+					columnBuilder.build();
+				}
+//				String[] qName = path.split("[.]");
+				
+				Table table = new TableBuilder(this, tableName).schema(schema).catalog(catalog).columns(columnsBuilder).build();
+				
+				return table;
+			}
+		}
+	}
 	public ResultSet getTableSchema(Connection connection, String tableName) throws SQLException
 	{
 		DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-		return databaseMetaData.getColumns(connection.getCatalog(), connection.getSchema(), tableName, null);
+		return databaseMetaData.getColumns(catalog, schema, tableName, null);
 	}
-	
+
 	// public CreateTableBuilder createTable(String name, Column)
 }

@@ -1,0 +1,1 @@
+INSERT INTO #if (${catalog})${catalog}.#end#if (${schema})${schema}.#end${table} ( ${su.expand($columns)} ) VALUES (#set ($first=true)#foreach ($column in $columns)#if($first)#set($first=false)#else, #end?#end)

@@ -73,6 +73,8 @@ public class DatabaseUtility implements AutoCloseable
 	private Properties dialects;
 	private String dialect;
 	private String createTableStatementStr;
+	private String insertStatementStr;
+	private String updateStatementStr;
 	private String selectStatementStr;
 	private String unionStatementStr;
 	private String joinStatementStr;
@@ -137,6 +139,13 @@ public class DatabaseUtility implements AutoCloseable
 					.toString();
 			unionStatementStr = FileUtils.readTextFile("classpath:db/sql-dialects/" + dialect + "/union.vm").toString();
 			joinStatementStr = FileUtils.readTextFile("classpath:db/sql-dialects/" + dialect + "/join.vm").toString();
+
+			insertStatementStr = FileUtils.readTextFile("classpath:db/sql-dialects/" + dialect + "/insert.vm")
+					.toString();
+			
+			updateStatementStr = FileUtils.readTextFile("classpath:db/sql-dialects/" + dialect + "/update.vm")
+					.toString();
+			
 //					velocityEngine
 //					.getTemplate(path);
 		} catch (ResourceNotFoundException | ParseErrorException | SQLException | IOException e)
@@ -820,111 +829,82 @@ public class DatabaseUtility implements AutoCloseable
 	}
 
 	public PreparedStatement createInsertStatement(String catalog, String schema, String tableName,
-			Connection connection, String[] columns, List params) throws SQLException
+			Connection connection, String[] columns, List params) throws SQLException, TereException
 	{
 
-		StringBuilder builder = new StringBuilder("insert into ");
-
-		if (null != catalog)
-		{
-			builder.append(catalog);
-			builder.append(".");
-		}
-		builder.append(schema);
-		builder.append(".");
-		builder.append(tableName);
-		builder.append(" (");
-		CollectionsUtils.iterate(Arrays.asList(columns), (pos, val) ->
-			{
-				builder.append(pos == 0 ? val : ", " + val);
-			});
-		builder.append(") VALUES (");
-		boolean first = true;
-		for (Object param : params)
-		{
-			if (!first)
-			{
-				builder.append(", ");
-			}
-			builder.append("?");
-			first = false;
-		}
-		builder.append(")");
-
-		final PreparedStatement preparedStatement = connection.prepareStatement(builder.toString());
+		final PreparedStatement preparedStatement = createInsertStatement(catalog, schema, tableName, connection,
+				columns);
 
 		addParams(preparedStatement, params);
 		return preparedStatement;
 	}
 
 	public PreparedStatement createInsertStatement(String catalog, String schema, String tableName,
-			Connection connection, String[] columns) throws SQLException
+			Connection connection, String[] columns) throws SQLException, TereException
 	{
-
-		StringBuilder builder = new StringBuilder("insert into ");
-
-		if (null != catalog)
+		VelocityContext context = new VelocityContext();
+//		StringWriter writer = new StringWriter();
+		try (StringWriter writer = new StringWriter(); StringReader reader = new StringReader(insertStatementStr))
 		{
-			builder.append(catalog);
-			builder.append(".");
+
+			context.put("catalog", catalog);
+			context.put("schema", schema);
+			context.put("table", tableName);
+			context.put("columns", columns);
+			context.put("su", new StringUtils());
+			velocityEngine.evaluate(context, writer, "selectStatement", reader);
+//			createTableStatement.merge(context, writer);
+
+			String stmtStr = writer.getBuffer().toString();
+
+			log.debug(stmtStr);
+			PreparedStatement preparedStatement = connection.prepareStatement(stmtStr);
+			return preparedStatement;
+		} catch (Exception e)
+		{
+			throw new TereException(e);
 		}
-		builder.append(schema);
-		builder.append(".");
-		builder.append(tableName);
-		builder.append(" (");
-		CollectionsUtils.iterate(Arrays.asList(columns), (pos, val) ->
-			{
-				builder.append(pos == 0 ? val : ", " + val);
-			});
-		builder.append(") VALUES (");
-		boolean first = true;
-		CollectionsUtils.iterate(Arrays.asList(columns), (pos, val) ->
-			{
-				builder.append(pos == 0 ? "?" : ", ?");
-			});
-		builder.append(")");
-
-		final PreparedStatement statement = connection.prepareStatement(builder.toString());
-
-		return statement;
 	}
 
-	public PreparedStatement createInsertStatement(String path, Connection connection,
-			LinkedHashMap<String, Object> cols) throws SQLException
+	public PreparedStatement createInsertStatement(String tableName, Connection connection,
+			LinkedHashMap<String, Object> cols) throws TereException, SQLException, RuntimeException
 	{
 
-		StringBuilder builder = new StringBuilder("insert into ");
-		StringBuilder colNames = new StringBuilder();
-		StringBuilder colValues = new StringBuilder();
-		StringUtils.<String, Object>expand(cols, (f, l, k, v) ->
-			{
-				colNames.append(f ? k : "," + k);
-				colValues.append(f ? "?" : ", ?");
-				return "";
-			});
-
-		builder.append(getQName(path));
-		builder.append(" (");
-		builder.append(colNames);
-		builder.append(") VALUES (");
-		builder.append(colValues);
-		builder.append(")");
-
-//		CollectionsUtils.iterate(Arrays.asList(params), (pos, val) -> 
-//		{ 
-//			builder.append(pos ==0 ? '?' : ", " + '?');
-//		});
-
-		final PreparedStatement statement = connection.prepareStatement(builder.toString());
-
-		int paramNo = 1;
-		for (Map.Entry<String, Object> entry : cols.entrySet())
-		{
-			statement.setObject(paramNo++, entry.getValue());
-		}
-		;
-
-		return statement;
+		return createInsertStatement(catalog, schema, tableName, connection,
+				CollectionsUtils.toArray(cols.keySet(), new String[cols.size()], (p, v) -> v));
+//
+//		StringBuilder builder = new StringBuilder("insert into ");
+//		StringBuilder colNames = new StringBuilder();
+//		StringBuilder colValues = new StringBuilder();
+//		StringUtils.<String, Object>expand(cols, (f, l, k, v) ->
+//			{
+//				colNames.append(f ? k : "," + k);
+//				colValues.append(f ? "?" : ", ?");
+//				return "";
+//			});
+//
+//		builder.append(getQName(path));
+//		builder.append(" (");
+//		builder.append(colNames);
+//		builder.append(") VALUES (");
+//		builder.append(colValues);
+//		builder.append(")");
+//
+////		CollectionsUtils.iterate(Arrays.asList(params), (pos, val) -> 
+////		{ 
+////			builder.append(pos ==0 ? '?' : ", " + '?');
+////		});
+//
+//		final PreparedStatement statement = connection.prepareStatement(builder.toString());
+//
+//		int paramNo = 1;
+//		for (Map.Entry<String, Object> entry : cols.entrySet())
+//		{
+//			statement.setObject(paramNo++, entry.getValue());
+//		}
+//		;
+//
+//		return statement;
 	}
 
 	public PreparedStatement createSelectStatement(Connection connection, String catalog, String schema,
@@ -961,30 +941,33 @@ public class DatabaseUtility implements AutoCloseable
 		}
 	}
 
-	public PreparedStatement createUpdateStatement(String path, Connection connection, String[] columns,
-			String[] whereItems, List params) throws SQLException
+	public PreparedStatement createUpdateStatement(String tableName, Connection connection, String[] columns,
+			String[] whereItems, List params) throws SQLException, TereException
 	{
-
-		StringBuilder builder = new StringBuilder("UPDATE ");
-
-		builder.append(getQName(path));
-		builder.append(" SET ");
-		CollectionsUtils.iterate(Arrays.asList(columns), (pos, val) ->
-			{
-				if (pos != 0)
-					builder.append(" , ");
-				builder.append(columns[pos]);
-				builder.append(" = ?");
-			});
-		if (null != whereItems)
+		VelocityContext context = new VelocityContext();
+//		StringWriter writer = new StringWriter();
+		try (StringWriter writer = new StringWriter(); StringReader reader = new StringReader(insertStatementStr))
 		{
-			builder.append(" WHERE ");
-			builder.append(StringUtils.expand(whereItems));
-		}
-		final PreparedStatement preparedStatement = connection.prepareStatement(builder.toString());
-		addParams(preparedStatement, params);
 
-		return preparedStatement;
+			context.put("catalog", catalog);
+			context.put("schema", schema);
+			context.put("table", tableName);
+			context.put("columns", columns);
+			context.put("whereItems", whereItems);
+			context.put("su", new StringUtils());
+			velocityEngine.evaluate(context, writer, "selectStatement", reader);
+//			createTableStatement.merge(context, writer);
+
+			String stmtStr = writer.getBuffer().toString();
+
+			log.debug(stmtStr);
+			PreparedStatement preparedStatement = connection.prepareStatement(stmtStr);
+			addParams(preparedStatement, params);
+			return preparedStatement;
+		} catch (Exception e)
+		{
+			throw new TereException(e);
+		}
 	}
 
 	public PreparedStatement createUnionStatement(Connection connection, String catalog1, String schema1,
@@ -1024,10 +1007,14 @@ public class DatabaseUtility implements AutoCloseable
 		try (StringWriter writer = new StringWriter(); StringReader reader = new StringReader(joinStatementStr))
 		{
 
+			String table1QName = (catalog1 != null ? catalog1 + "." : "") + (schema1 != null ? schema1 + "." : "")
+					+ tableName1;
+			String table2QName = (catalog2 != null ? catalog2 + "." : "") + (schema2 != null ? schema2 + "." : "")
+					+ tableName2;
 			context.put("joinType", joinType);
-			context.put("table1", catalog1 + "." + schema1 + "." + tableName1);
+			context.put("table1", table1QName);
 			context.put("columns", columns);
-			context.put("table2", catalog2 + "." + schema2 + "." + tableName2);
+			context.put("table2", table2QName);
 			context.put("onItems", onItems);
 			context.put("whereItems", whereItems);
 			context.put("su", new StringUtils());
@@ -1076,7 +1063,7 @@ public class DatabaseUtility implements AutoCloseable
 				columns, whereItems, onItems);
 	}
 
-	public void insert(String tableName, String[] columns, List params) throws SQLException
+	public void insert(String tableName, String[] columns, List params) throws SQLException, TereException
 	{
 		try (Connection connection = getConnection())
 		{
@@ -1100,7 +1087,7 @@ public class DatabaseUtility implements AutoCloseable
 	}
 
 	public <T, E extends Exception> void insert(String tableName, T value, InsertFunction<T, E> insertFunc)
-			throws SQLException, E
+			throws SQLException, TereException, E
 	{
 		try (Connection connection = getConnection())
 		{
@@ -1119,7 +1106,7 @@ public class DatabaseUtility implements AutoCloseable
 		}
 	}
 
-	public int update(String tableName, String[] columns, String[] whereItems, List params) throws SQLException
+	public int update(String tableName, String[] columns, String[] whereItems, List params) throws SQLException, TereException
 	{
 		try (Connection connection = getConnection();
 				PreparedStatement statement = createUpdateStatement(tableName, connection, columns, whereItems, params))
@@ -1253,8 +1240,8 @@ public class DatabaseUtility implements AutoCloseable
 			@Override
 			public Table build() throws TereException, BuilderException
 			{
-				Table table =  super.build();
-				
+				Table table = super.build();
+
 				boolean result = true;
 				try (Connection connection = getConnection())
 				{
@@ -1274,9 +1261,9 @@ public class DatabaseUtility implements AutoCloseable
 
 	public Table describeTable(String tableName) throws TereException, SQLException
 	{
-		
+
 //		String[] paths = tablePath.split("[.]");
-		
+
 		try (Connection connection = getConnection())
 		{
 			DatabaseMetaData databaseMetaData = connection.getMetaData();
@@ -1293,37 +1280,38 @@ public class DatabaseUtility implements AutoCloseable
 							.type(JDBCType.valueOf(resultSet.getInt(DATA_TYPE_POS)));
 					switch (resultSet.getShort(DATA_TYPE_POS))
 					{
-						case Types.DECIMAL:
-						case Types.NUMERIC:
-							columnBuilder
-								.scale(resultSet.getInt(DECIMAL_DIGITS))
+					case Types.DECIMAL:
+					case Types.NUMERIC:
+						columnBuilder.scale(resultSet.getInt(DECIMAL_DIGITS))
 								.precision(resultSet.getInt(COLUMN_SIZE_POS));
-							break;
-						case Types.BLOB:
-						case Types.CLOB:
-						case Types.JAVA_OBJECT:
-						case Types.LONGNVARCHAR:
-						case Types.LONGVARBINARY:
-						case Types.LONGVARCHAR:
-						case Types.NCLOB:
-						case Types.NVARCHAR:
-						case Types.STRUCT:
-						case Types.ARRAY:
-						case Types.VARBINARY:
-						case Types.VARCHAR:
-							columnBuilder.length(resultSet.getInt(COLUMN_SIZE_POS));
-							break;
+						break;
+					case Types.BLOB:
+					case Types.CLOB:
+					case Types.JAVA_OBJECT:
+					case Types.LONGNVARCHAR:
+					case Types.LONGVARBINARY:
+					case Types.LONGVARCHAR:
+					case Types.NCLOB:
+					case Types.NVARCHAR:
+					case Types.STRUCT:
+					case Types.ARRAY:
+					case Types.VARBINARY:
+					case Types.VARCHAR:
+						columnBuilder.length(resultSet.getInt(COLUMN_SIZE_POS));
+						break;
 					}
 					columnBuilder.build();
 				}
 //				String[] qName = path.split("[.]");
-				
-				Table table = new TableBuilder(this, tableName).schema(schema).catalog(catalog).columns(columnsBuilder).build();
-				
+
+				Table table = new TableBuilder(this, tableName).schema(schema).catalog(catalog).columns(columnsBuilder)
+						.build();
+
 				return table;
 			}
 		}
 	}
+
 	public ResultSet getTableSchema(Connection connection, String tableName) throws SQLException
 	{
 		DatabaseMetaData databaseMetaData = connection.getMetaData();

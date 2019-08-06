@@ -871,7 +871,7 @@ public class DatabaseUtility implements AutoCloseable
 	{
 
 		return createInsertStatement(catalog, schema, tableName, connection,
-				CollectionsUtils.toArray(cols.keySet(), new String[cols.size()], (p, v) -> v));
+				CollectionsUtils.toArray(cols.keySet(), new String[cols.size()], (p, v) -> v),  CollectionsUtils.toList(cols.values(), (p, v)-> v));
 //
 //		StringBuilder builder = new StringBuilder("insert into ");
 //		StringBuilder colNames = new StringBuilder();
@@ -946,7 +946,7 @@ public class DatabaseUtility implements AutoCloseable
 	{
 		VelocityContext context = new VelocityContext();
 //		StringWriter writer = new StringWriter();
-		try (StringWriter writer = new StringWriter(); StringReader reader = new StringReader(insertStatementStr))
+		try (StringWriter writer = new StringWriter(); StringReader reader = new StringReader(updateStatementStr))
 		{
 
 			context.put("catalog", catalog);

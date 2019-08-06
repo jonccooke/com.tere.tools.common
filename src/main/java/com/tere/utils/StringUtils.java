@@ -35,6 +35,21 @@ public class StringUtils
 		return stringBuilder.toString();
 	}
 
+	public static <T> String expandReplace(T[] array, String replaceString)
+	{
+		StringBuilder stringBuilder = new StringBuilder();
+		int pos = 0;
+		for (T value : array)
+		{
+			if (0 != pos++)
+			{
+				stringBuilder.append(", ");
+			}
+			stringBuilder.append(replaceString);
+		}
+		return stringBuilder.toString();
+	}
+
 	public static <T> String expand(Collection<T> col, String separatorString, String postString)
 	{
 		StringBuilder stringBuilder = new StringBuilder();

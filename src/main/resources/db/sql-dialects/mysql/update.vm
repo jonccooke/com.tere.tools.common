@@ -1,1 +1,1 @@
-UPDATE #if (${catalog})${catalog}.#end#if (${schema})${schema}.#end${tableName} SET ( ${su.expand($columns, "= ?")} ) #if(!$su.isNullOrEmpty($whereItems)) WHERE $su.expand($whereItems)#end
+UPDATE #if (${catalog})${catalog}.#end#if (${schema})${schema}.#end${table} SET ( ${su.expand($columns, "=")} ) #if(!$su.isNullOrEmpty($whereItems)) WHERE $su.expand($whereItems)#end

@@ -83,11 +83,22 @@ public class TestDatabaseUtility
 	}
 
 	@Test
-	public void testInsert() throws DatabaseConfigException, SQLException, TereException
+	public void testInsertParams() throws DatabaseConfigException, SQLException, TereException
 	{
 		databaseUtility.insert("TEST_OBJECT", new String[] {"obj_id", "obj_name", "obj_description"}, CollectionsUtils.toList(2, "test", "Test desc"));
 
 		databaseUtility.iterate("select * from TEST_OBJECT", (rs) -> { log.debug("%d", rs.getInt(1));});
+	}
+
+	@Test
+	public void testInsertFunc() throws DatabaseConfigException, SQLException, TereException
+	{
+		String test = "Test";
+		databaseUtility.insert("TEST_OBJECT",test, (v, cols) ->
+		{
+			cols.put("obj_id", v.length());
+			cols.put("obj_name", v);
+		});
 	}
 
 	@Test

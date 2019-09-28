@@ -1,0 +1,1 @@
+DELETE FROM TABLE #if(!$su.isNullOrEmpty($catalog))${catalog}.#end#if(!$su.isNullOrEmpty($schema))${schema}.#end$table#if(!$su.isNullOrEmpty($whereItems)) WHERE $su.expand($whereItems)#end

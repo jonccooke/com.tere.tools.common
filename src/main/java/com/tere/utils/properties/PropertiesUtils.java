@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.tere.TereException;
 import com.tere.builder.Builder;
 import com.tere.utils.directory.FileUtils;
@@ -45,7 +47,7 @@ public class PropertiesUtils
 		return properties;
 	}
 
-	public static PropertiesBuilder toBuilder()
+	public static PropertiesBuilder getBuilder()
 	{
 		return new PropertiesBuilder();
 	}
@@ -59,11 +61,28 @@ public class PropertiesUtils
 			properties.put(key, value);
 			return this;
 		}
+
+		public PropertiesBuilder putIfExists(String key, String value)
+		{
+			if (value != null)
+			{
+				properties.put(key, value);
+			}
+			return this;
+		}
+
 		@Override
 		public Properties build() throws TereException
 		{
 			return properties;
 		}
+	}
+	
+	public static JsonElement toJson(Properties properties)
+	{
+		JsonObject jsonProps = new JsonObject();
 		
+		properties.forEach((key, val)->jsonProps.addProperty((String)key, (String)val));
+		return jsonProps;
 	}
 }

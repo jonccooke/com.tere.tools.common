@@ -50,7 +50,7 @@ public class DatabaseUtility implements AutoCloseable
 	public static final String DATABSE_CATALOG = "databaseCatalog";
 	public static final String DATABSE_ATUO_COMMIT = "autoCommit";
 	public static final String DATABASE_SCHEMA = "databaseSchema";
-	public static final String SQL_DIALECT = "hsqldb";
+	public static final String SQL_DIALECT = "dialect";
 
 	private static final int CAT_NAME_POS = 1;
 	private static final int SCHEMA_NAME_POS = 2;
@@ -76,6 +76,8 @@ public class DatabaseUtility implements AutoCloseable
 	private String insertStatementStr;
 	private String updateStatementStr;
 	private String selectStatementStr;
+	private String deleteTableStatementStr;
+	private String deleteRowsStatementStr;
 	private String unionStatementStr;
 	private String joinStatementStr;
 	private VelocityEngine velocityEngine;
@@ -106,7 +108,7 @@ public class DatabaseUtility implements AutoCloseable
 //		{
 //			throw new SchemaNotSpecifiedException();
 //		}
-		dialect = properties.getProperty(SQL_DIALECT, "hsql-db").toLowerCase();
+		dialect = properties.getProperty(SQL_DIALECT, "hsqldb").toLowerCase();
 
 		if (dialect.equals("mysql"))
 		{
@@ -136,6 +138,10 @@ public class DatabaseUtility implements AutoCloseable
 			createTableStatementStr = FileUtils.readTextFile("classpath:db/sql-dialects/" + dialect + "/createtable.vm")
 					.toString();
 			selectStatementStr = FileUtils.readTextFile("classpath:db/sql-dialects/" + dialect + "/select.vm")
+					.toString();
+			deleteTableStatementStr = FileUtils.readTextFile("classpath:db/sql-dialects/" + dialect + "/deleteTable.vm")
+					.toString();
+			deleteRowsStatementStr = FileUtils.readTextFile("classpath:db/sql-dialects/" + dialect + "/deleteRows.vm")
 					.toString();
 			unionStatementStr = FileUtils.readTextFile("classpath:db/sql-dialects/" + dialect + "/union.vm").toString();
 			joinStatementStr = FileUtils.readTextFile("classpath:db/sql-dialects/" + dialect + "/join.vm").toString();
@@ -258,31 +264,9 @@ public class DatabaseUtility implements AutoCloseable
 
 		for (Object param : params)
 		{
-//			if (param != null)
-//			{
-//				if (param instanceof Collection)
-//				{
-//					for (Object p : (Collection) param)
-//					{
-//						statement.setObject(pos++, p);
-//					}
-//				} else if (param.getClass().isArray())
-//				{
-//					for (Object p : (Object[]) param)
-//					{
-//						statement.setObject(pos++, p);
-//					}
-//				} else
-//				{
-//					statement.setObject(pos++, param);
-//
-//				}
-//			} else
-//			{
-			statement.setObject(pos++, null);
+			statement.setObject(pos++, param);
 		}
 
-//		}
 
 	}
 
@@ -840,6 +824,21 @@ public class DatabaseUtility implements AutoCloseable
 	}
 
 	public PreparedStatement createInsertStatement(String catalog, String schema, String tableName,
+			Connection connection, String[] columns, Object[][] params) throws SQLException, TereException
+	{
+
+		final PreparedStatement preparedStatement = createInsertStatement(catalog, schema, tableName, connection,
+				columns);
+
+		for (Object[] paramRow : params)
+		{
+			addParams(preparedStatement, paramRow);
+			preparedStatement.addBatch();
+		}
+		return preparedStatement;
+	}
+
+	public PreparedStatement createInsertStatement(String catalog, String schema, String tableName,
 			Connection connection, String[] columns) throws SQLException, TereException
 	{
 		VelocityContext context = new VelocityContext();
@@ -923,8 +922,14 @@ public class DatabaseUtility implements AutoCloseable
 			context.put("whereItems", whereItems);
 			context.put("orderByItems", orderByItems);
 			context.put("groupByItems", groupByItems);
-			context.put("limit", orderByItems);
-			context.put("offset", orderByItems);
+			if (-1 != limit)
+			{
+				context.put("limit", limit);
+			}
+			if (-1 != offset)
+			{
+				context.put("offset", offset);
+			}
 			context.put("su", new StringUtils());
 			velocityEngine.evaluate(context, writer, "selectStatement", reader);
 //		createTableStatement.merge(context, writer);
@@ -941,6 +946,60 @@ public class DatabaseUtility implements AutoCloseable
 		}
 	}
 
+	public PreparedStatement createDropTableStatement(Connection connection, String catalog, String schema,
+			String tableName) throws TereException
+	{
+		VelocityContext context = new VelocityContext();
+//	StringWriter writer = new StringWriter();
+		try (StringWriter writer = new StringWriter(); StringReader reader = new StringReader(deleteTableStatementStr))
+		{
+
+			context.put("catalog", catalog);
+			context.put("schema", schema);
+			context.put("table", tableName);
+			context.put("su", new StringUtils());
+			velocityEngine.evaluate(context, writer, "selectStatement", reader);
+//		createTableStatement.merge(context, writer);
+
+			String stmtStr = writer.getBuffer().toString();
+
+			log.debug(stmtStr);
+			PreparedStatement preparedStatement = connection.prepareStatement(stmtStr);
+			return preparedStatement;
+		} catch (Exception e)
+		{
+			throw new TereException(e);
+		}
+	}
+	public PreparedStatement createDeleteRowsStatement(Connection connection, String catalog, String schema,
+			String tableName, String[] whereItems, List params) throws TereException
+	{
+		VelocityContext context = new VelocityContext();
+//	StringWriter writer = new StringWriter();
+		try (StringWriter writer = new StringWriter(); StringReader reader = new StringReader(deleteRowsStatementStr))
+		{
+
+			context.put("catalog", catalog);
+			context.put("schema", schema);
+			context.put("table", tableName);
+			context.put("whereItems", whereItems);
+			context.put("su", new StringUtils());
+			velocityEngine.evaluate(context, writer, "selectStatement", reader);
+//		createTableStatement.merge(context, writer);
+
+			String stmtStr = writer.getBuffer().toString();
+
+			log.debug(stmtStr);
+			PreparedStatement preparedStatement = connection.prepareStatement(stmtStr);
+			addParams(preparedStatement, params);
+			return preparedStatement;
+		} catch (Exception e)
+		{
+			throw new TereException(e);
+		}
+	}
+
+	
 	public PreparedStatement createUpdateStatement(String tableName, Connection connection, String[] columns,
 			String[] whereItems, List params) throws SQLException, TereException
 	{
@@ -1076,6 +1135,28 @@ public class DatabaseUtility implements AutoCloseable
 				if (!autoCommit)
 				{
 					connection.commit();
+				}
+			}
+		}
+	}
+
+	public void insert(String tableName, String[] columns, Object[][] params) throws SQLException, TereException
+	{
+		try (Connection connection = getConnection())
+		{
+			try (PreparedStatement statement = createInsertStatement(catalog, schema, tableName, connection, columns,
+					params))
+			{
+
+				connection.setAutoCommit(false);
+				
+				statement.executeBatch();
+
+				connection.commit();
+
+				if (autoCommit)
+				{
+					connection.setAutoCommit(autoCommit);
 				}
 			}
 		}
@@ -1317,6 +1398,67 @@ public class DatabaseUtility implements AutoCloseable
 		DatabaseMetaData databaseMetaData = connection.getMetaData();
 
 		return databaseMetaData.getColumns(catalog, schema, tableName, null);
+	}
+
+	public void drop(String tableName) throws SQLException, TereException
+	{
+		drop(catalog, schema, tableName);
+	}	
+	
+	public void drop(String catalog, String schema, String tableName) throws SQLException, TereException
+	{
+		try (Connection connection = getConnection())
+		{
+			try (PreparedStatement statement = createDropTableStatement(connection, catalog, schema, tableName))
+			{
+				statement.execute();
+
+				if (!autoCommit)
+				{
+					connection.commit();
+				}
+			}
+		}
+	}
+	
+	public void delete(String catalog, String schema, String tableName) throws SQLException, TereException
+	{
+		delete(catalog, schema, tableName, null, null); 
+	}
+//		try (Connection connection = getConnection())
+//		{
+//			try (PreparedStatement statement = createDeleteTableStatement(connection, catalog, schema, tableName))
+//			{
+//				statement.execute();
+//
+//				if (!autoCommit)
+//				{
+//					connection.commit();
+//				}
+//			}
+//		}
+//		
+//	}
+	public void delete(String tableName, String[] whereItems) throws SQLException, TereException
+	{
+		delete(catalog, schema, tableName, whereItems, null);
+	}
+	
+	public void delete(String catalog, String schema, String tableName, String[] whereItems, List params) throws SQLException, TereException
+	{
+		try (Connection connection = getConnection())
+		{
+			try (PreparedStatement statement = createDeleteRowsStatement(connection, catalog, schema, tableName, whereItems, params))
+			{
+				statement.execute();
+
+				if (!autoCommit)
+				{
+					connection.commit();
+				}
+			}
+		}
+		
 	}
 
 	// public CreateTableBuilder createTable(String name, Column)

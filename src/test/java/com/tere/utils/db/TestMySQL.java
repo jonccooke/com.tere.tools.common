@@ -16,9 +16,9 @@ public class TestMySQL
 {
 
 	@Test
-	public void test() throws SQLException, TereException
+	public void testMQSQL() throws SQLException, TereException
 	{
-		try (DatabaseUtility databaseUtility = new DatabaseUtility(PropertiesUtils.toBuilder()
+		try (DatabaseUtility databaseUtility = new DatabaseUtility(PropertiesUtils.getBuilder()
 				.put(DatabaseUtility.DATABSE_URL_STR,
 						"jdbc:mysql://database-1.cdeokilyv7zn.eu-west-2.rds.amazonaws.com:3306")
 				.put(DatabaseUtility.DATABASE_SCHEMA, "testdb").put(DatabaseUtility.DATABSE_USERNAME_STR, "admin")

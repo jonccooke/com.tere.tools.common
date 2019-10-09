@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
+import com.google.gson.JsonElement;
 import com.tere.TereException;
 import com.tere.builder.Builder;
 import com.tere.builder.BuilderException;
@@ -48,6 +49,13 @@ public class ColumnsBuilder extends BuilderImpl<Map<String, Column>, TereExcepti
 			value.put(columnBuilder.column.name, columnBuilder.column);
 		}
 		return super.build();
+	}
+
+	@Override
+	public ColumnsBuilder fromJson(JsonElement jsonElement)
+	{
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

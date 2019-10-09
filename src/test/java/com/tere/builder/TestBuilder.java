@@ -10,7 +10,7 @@ import com.tere.builder.NotNullIIfSet;
 public class TestBuilder
 {
 
-	public class TestObject
+	public class TestBuilderObject
 	{
 		@NotNull
 		private String val1;
@@ -33,7 +33,7 @@ public class TestBuilder
 
 	}
 
-	class TestObjectBuilder extends BuilderImpl<TestObject, TereException>
+	class TestObjectBuilder extends BuilderImpl<TestBuilderObject, TereException>
 	{
 
 		protected TestObjectBuilder() throws TereException
@@ -66,9 +66,9 @@ public class TestBuilder
 		}
 
 		@Override
-		protected TestObject createInstance()
+		protected TestBuilderObject createInstance()
 		{
-			return new TestObject();
+			return new TestBuilderObject();
 		}
 
 	}

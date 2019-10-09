@@ -1,9 +1,14 @@
 package com.tere.utils.io.json;
 
+import java.util.Map.Entry;
+import java.util.Properties;
+
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 
-public class JSONUtils
+public class JsonUtils
 {
 	public interface GetterFunction<T>
 	{
@@ -174,4 +179,78 @@ public class JSONUtils
 		return getObject(requestData, elementName, getterFunction); 
 	}
 	
+
+	public static String getString(JsonElement jsonElement)
+	{
+		if ((null != jsonElement) && (JsonNull.INSTANCE != jsonElement))
+		{
+			return jsonElement.getAsString();
+		}
+		return null;
+	}
+
+	public static int getInteger(JsonElement jsonElement, int defaultValue)
+	{
+		if ((null != jsonElement) && (JsonNull.INSTANCE != jsonElement))
+		{
+			return Integer.parseInt(jsonElement.getAsString());
+		}
+		return defaultValue;
+	}
+
+	public static long getLong(JsonElement jsonElement, long defaultValue)
+	{
+		if ((null != jsonElement) && (JsonNull.INSTANCE != jsonElement))
+		{
+			return Long.parseLong(jsonElement.getAsString());
+		}
+		return defaultValue;
+	}
+
+
+//	public static byte[] getBytes(JsonElement jsonElement)
+//	{
+//		if ((null != jsonElement) && (JsonNull.INSTANCE != jsonElement))
+//		{
+//			return jsonElement.getAsJsonArray();
+//		}
+//		return null;
+//	}
+
+	public static boolean getBoolean(JsonElement jsonElement,
+			boolean defaultValue)
+	{
+		if ((null != jsonElement) && (JsonNull.INSTANCE != jsonElement))
+		{
+			return jsonElement.getAsBoolean();
+		}
+		return defaultValue;
+	}
+
+	public static JsonArray getArray(JsonElement jsonElement)
+	{
+		if ((null != jsonElement) && (JsonNull.INSTANCE != jsonElement))
+		{
+			return jsonElement.getAsJsonArray();
+		}
+		return null;
+	}
+
+	public static Properties getProperties(JsonElement jsonElement)
+	{
+		Properties properties = null;
+		if ((null != jsonElement) && (JsonNull.INSTANCE != jsonElement))
+		{
+			properties = new Properties();
+
+			for (Entry<String, JsonElement> elementEntry : jsonElement
+					.getAsJsonObject().entrySet())
+			{
+				properties.setProperty(elementEntry.getKey(), elementEntry
+						.getValue().getAsString());
+			}
+		}
+		return properties;
+	}
+
 }

@@ -3,6 +3,7 @@ package com.tere.builder;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 
+import com.google.gson.JsonElement;
 import com.tere.TereException;
 
 public abstract class BuilderImpl<C, E extends TereException> implements Builder<C, E>
@@ -107,6 +108,12 @@ public abstract class BuilderImpl<C, E extends TereException> implements Builder
 	{
 		check();
 		return value;
+	}
+
+	@Override
+	public  BuilderImpl<C, E> fromJson(JsonElement jsonElement) throws TereException
+	{
+		return this;
 	}
 
 

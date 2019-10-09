@@ -2,6 +2,7 @@ package com.tere.utils.properties;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
 import java.util.Properties;
 
 import com.google.gson.JsonElement;
@@ -75,6 +76,18 @@ public class PropertiesUtils
 		public Properties build() throws TereException
 		{
 			return properties;
+		}
+
+		@Override
+		public PropertiesBuilder fromJson(JsonElement jsonElement)
+		{
+			JsonObject jsonObject = jsonElement.getAsJsonObject();
+			
+			for (Map.Entry<String, JsonElement> entry : jsonObject.entrySet())
+			{
+				this.properties.put(entry.getKey(), entry.getValue().toString());
+			}
+			return this;
 		}
 	}
 	

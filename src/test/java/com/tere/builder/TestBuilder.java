@@ -1,6 +1,7 @@
 package com.tere.builder;
 import org.junit.Test;
 
+import com.google.gson.JsonElement;
 import com.tere.TereException;
 import com.tere.builder.BuilderException;
 import com.tere.builder.BuilderImpl;
@@ -69,6 +70,13 @@ public class TestBuilder
 		protected TestBuilderObject createInstance()
 		{
 			return new TestBuilderObject();
+		}
+
+		@Override
+		public Builder<TestBuilderObject, TereException> fromJson(JsonElement jsonElement) throws TereException
+		{
+			// TODO Auto-generated method stub
+			return null;
 		}
 
 	}

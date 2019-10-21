@@ -7,5 +7,5 @@ import com.tere.builder.Builder;
 
 public interface DatabaseBackedBuilder<C, E extends TereException> extends Builder<C, E>
 {
-	public abstract C fromDatabase(DatabaseUtility databaseUtility, Object... params) throws SQLException, E;
+	public abstract DatabaseBackedBuilder<C, E > fromDatabase(DatabaseUtility databaseUtility, Object... params) throws SQLException, E;
 }

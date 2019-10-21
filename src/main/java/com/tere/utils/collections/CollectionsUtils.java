@@ -1,6 +1,5 @@
 package com.tere.utils.collections;
 
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -10,8 +9,6 @@ import java.util.Vector;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import com.tere.TereException;
 
 public class CollectionsUtils
 {
@@ -79,7 +76,7 @@ public class CollectionsUtils
 		public void iterate(int pos, T value) throws E;
 	}
 
-	public static <T, E extends Exception> void iterate(Collection<T> list, IteratorFunc<T, E> iteratorFunc) throws E
+	public static <T, E extends Exception> void iterate(Iterable<T> list, IteratorFunc<T, E> iteratorFunc) throws E
 	{
 		int pos = 0;
 		for (T listValue : list)
@@ -98,7 +95,80 @@ public class CollectionsUtils
 	}
 
 
-	public static <T, V, E extends Exception> T[] toArray(Collection<V> col, T[] array, ListIteratorFunc<T, V, E> iteratorFunc)
+	public static <T, V, E extends Exception> T[] toArray(Iterable<V> col, T[] array, ListIteratorFunc<T, V, E> iteratorFunc)
+			throws E
+	{
+		int pos = 0;
+		for (V listValue : col)
+		{
+			array[pos] = iteratorFunc.iterate(pos++, listValue);
+		}
+		
+		return array;
+	}
+
+	public static <V, E extends Exception> int[] toArray(Iterable<V> col, int[] array, ListIntIteratorFunc<V, E> iteratorFunc)
+			throws E
+	{
+		int pos = 0;
+		for (V listValue : col)
+		{
+			array[pos] = iteratorFunc.iterate(pos++, listValue);
+		}
+		
+		return array;
+	}
+
+	public static <V, E extends Exception> float[] toArray(Iterable<V> col, float[] array, ListFloatIteratorFunc<V, E> iteratorFunc)
+			throws E
+	{
+		int pos = 0;
+		for (V listValue : col)
+		{
+			array[pos] = iteratorFunc.iterate(pos++, listValue);
+		}
+		
+		return array;
+	}
+
+
+	public static <V, E extends Exception> double[] toArray(Iterable<V> col, double[] array, ListDoubleIteratorFunc<V, E> iteratorFunc)
+			throws E
+	{
+		int pos = 0;
+		for (V listValue : col)
+		{
+			array[pos] = iteratorFunc.iterate(pos++, listValue);
+		}
+		
+		return array;
+	}
+
+	public static <V, E extends Exception> long[] toArray(Iterable<V> col, long[] array, ListLongIteratorFunc<V, E> iteratorFunc)
+			throws E
+	{
+		int pos = 0;
+		for (V listValue : col)
+		{
+			array[pos] = iteratorFunc.iterate(pos++, listValue);
+		}
+		
+		return array;
+	}
+
+	public static <V, E extends Exception> short[] toArray(Iterable<V> col, short[] array, ListShortIteratorFunc<V, E> iteratorFunc)
+			throws E
+	{
+		int pos = 0;
+		for (V listValue : col)
+		{
+			array[pos] = iteratorFunc.iterate(pos++, listValue);
+		}
+		
+		return array;
+	}
+
+	public static <V, E extends Exception> byte[] toArray(Iterable<V> col, byte[] array, ListByteIteratorFunc<V, E> iteratorFunc)
 			throws E
 	{
 		int pos = 0;
@@ -126,7 +196,41 @@ public class CollectionsUtils
 		public T iterate(int pos, V value) throws E;
 	}
 
-	public static <T, V, E extends Exception> List<T> toList(Collection<V> col, ListIteratorFunc<T, V, E> iteratorFunc)
+	public interface ListFloatIteratorFunc<V, E extends Exception>
+	{
+		public float iterate(float pos, V value) throws E;
+	}
+
+	public interface ListDoubleIteratorFunc<V, E extends Exception>
+	{
+		public double iterate(int pos, V value) throws E;
+	}
+	public interface ListShortIteratorFunc<V, E extends Exception>
+	{
+		public short iterate(int pos, V value) throws E;
+	}
+	public interface ListLongIteratorFunc<V, E extends Exception>
+	{
+		public long iterate(int pos, V value) throws E;
+	}
+	public interface ListByteIteratorFunc<V, E extends Exception>
+	{
+		public byte iterate(int pos, V value) throws E;
+	}
+	public interface ListBooleanIteratorFunc<V, E extends Exception>
+	{
+		public boolean iterate(int pos, V value) throws E;
+	}
+	public interface ListIntIteratorFunc<V, E extends Exception>
+	{
+		public int iterate(int pos, V value) throws E;
+	}
+	public interface ListBteIteratorFunc<V, E extends Exception>
+	{
+		public byte iterate(int pos, V value) throws E;
+	}
+
+	public static <T, V, E extends Exception> List<T> toList(Iterable<V> col, ListIteratorFunc<T, V, E> iteratorFunc)
 			throws E
 	{
 		int pos = 0;
@@ -138,7 +242,7 @@ public class CollectionsUtils
 		return retList;
 	}
 
-	public static <T, V, E extends Exception> void toList(List<T> list, Collection<V> col,
+	public static <T, V, E extends Exception> void toList(List<T> list, Iterable<V> col,
 			ListIteratorFunc<T, V, E> iteratorFunc) throws E
 	{
 		int pos = 0;

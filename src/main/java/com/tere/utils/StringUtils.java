@@ -210,6 +210,21 @@ public class StringUtils
 		return stringBuilder.toString();
 	}
 
+	public static <T> String expand(T[] col, String separatorString, ExpandFunc<T> func)
+	{
+		StringBuilder stringBuilder = new StringBuilder();
+		int pos = 0;
+		for (T value : col)
+		{
+			if (0 != pos++)
+			{
+				stringBuilder.append(separatorString);
+			}
+			stringBuilder.append(func.expand(pos==0, pos == col.length-1, value));
+			pos++;
+		}
+		return stringBuilder.toString();
+	}
 
 	public static String expand(byte[] col, ExpandByteFunc func)
 	{

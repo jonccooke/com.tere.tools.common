@@ -1,5 +1,6 @@
 package com.tere.utils.io.json;
 
+import java.util.Date;
 import java.util.Map.Entry;
 import java.util.Properties;
 
@@ -15,11 +16,20 @@ public class JsonUtils
 		public T got(JsonElement el);
 	}
 
+	public interface SetterFunction
+	{
+		public void set(JsonElement el);
+	}
+
 	public interface HasFunction<T>
 	{
 		public void has(T el);
 	}
 
+	public static boolean isNull(JsonObject object, String elementName)
+	{
+		return (object.get(elementName)==null  || object.get(elementName).isJsonNull());
+	}
 	public static JsonElement getElement(JsonObject requestData, String elementName) throws JSONException
 	{
 		JsonElement el = requestData.get(elementName);
@@ -30,12 +40,22 @@ public class JsonUtils
 
 		return el;
 	}
+
+	public static void set(JsonObject requestData, String elementName, SetterFunction setterFunction) throws JSONException
+	{
+		JsonElement el = requestData.get(elementName);
+		if (null !=  el && el.isJsonNull())
+		{
+			setterFunction.set(requestData.get(elementName));
+		}
+	}
+
 	public static <T> T getObject(JsonObject requestData, String elementName, GetterFunction<T> getterFunction) throws JSONException
 	{
 		JsonElement el = requestData.get(elementName);
 		if (null ==  el || el.isJsonNull())
 		{
-			throw new JSONException(elementName + " not specified");
+			return null;
 		}
 		return getterFunction.got(el);
 	}
@@ -98,6 +118,15 @@ public class JsonUtils
 	}
 	
 
+	public static Long getLong(JsonObject requestData, String elementName, GetterFunction<Long> getterFunction) throws JSONException
+	{
+		return getObject(requestData, elementName, getterFunction); 
+	}
+	
+	public static long getLong(JsonObject requestData, String elementName) throws JSONException
+	{
+		return getObject(requestData, elementName, (el)-> el.getAsLong()); 
+	}
 	public static double getDouble(JsonObject requestData, String elementName) throws JSONException
 	{
 		return getObject(requestData, elementName, (el)-> el.getAsDouble()); 
@@ -206,6 +235,17 @@ public class JsonUtils
 		}
 		return defaultValue;
 	}
+	
+	public static Date getDate(JsonObject jsonObject, String memberName)
+	{
+		JsonElement element = jsonObject.get(memberName);
+		if ((null != element) && (JsonNull.INSTANCE != element))
+		{
+			return new Date(element.getAsLong());
+		}
+		return null;
+	}
+
 
 
 //	public static byte[] getBytes(JsonElement jsonElement)

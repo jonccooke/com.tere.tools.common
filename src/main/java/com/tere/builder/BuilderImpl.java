@@ -109,12 +109,12 @@ public abstract class BuilderImpl<C, E extends TereException> implements Builder
 		check();
 		return value;
 	}
-
-	@Override
-	public  BuilderImpl<C, E> fromJson(JsonElement jsonElement) throws TereException
-	{
-		return this;
-	}
+//
+//	@Override
+//	public  BuilderImpl<C, E> fromJson(JsonElement jsonElement) throws TereException
+//	{
+//		return this;
+//	}
 
 
 

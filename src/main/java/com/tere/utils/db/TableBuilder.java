@@ -2,6 +2,7 @@ package com.tere.utils.db;
 
 import java.util.LinkedHashMap;
 
+import com.google.gson.JsonElement;
 import com.tere.TereException;
 import com.tere.builder.Builder;
 import com.tere.builder.BuilderImpl;
@@ -43,6 +44,12 @@ public class TableBuilder extends BuilderImpl<Table, TereException> implements B
 	protected Table createInstance() throws TereException
 	{
 		return new Table();
+	}
+
+	@Override
+	public TableBuilder fromJson(JsonElement jsonElement) throws TereException
+	{
+		return this;
 	}
 
 //	@Override
